@@ -17,7 +17,7 @@ const UserScreen = ({ navigation }) => {
 
   const handleSave = () => {
     setIsEditing(false);
-    console.log("User info saved!");
+    console.log("User info saved correctly!");
   };
 
   const handleLogout = () => {

@@ -10,9 +10,9 @@ import HomeScreen from './app/screens/HomeScreen'; // Bottom Tab Navigation
 import DashboardScreen from './app/screens/DashboardScreen';
 import LandingScreen from './app/screens/LandingScreen';
 import PlantationsScreen from './app/screens/PlantationsScreen';
-import UserScreen from './app/screens/UserScreen';
 import DetailsScreen from './app/compononts/PlantDetails';
 import DeviceScreen from './app/screens/DeviceScreen';
+import DeviceDetailsScreen from './app/compononts/DeviceDetail';
 
 const Stack = createStackNavigator();
 
@@ -83,6 +83,13 @@ export default function App() {
         <Stack.Screen 
           name="Devices" 
           component={DeviceScreen} 
+          options={{ headerShown: false }} 
+        />
+
+        {/* New route for Device Details */}
+        <Stack.Screen 
+          name="DeviceDetail" 
+          component={DeviceDetailsScreen} 
           options={{ headerShown: false }} 
         />
       </Stack.Navigator>
