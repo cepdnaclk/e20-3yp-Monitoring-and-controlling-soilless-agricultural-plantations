@@ -15,9 +15,32 @@ export default function DashboardScreen({ navigation }) {
       const newData = {
         labels: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
         datasets: [
-          { data: [20, 21, 22, 23, 22, 21, 24], label: "Temperature (°C)" },
-          { data: [50, 55, 53, 57, 56, 54, 58], label: "Humidity (%)" },
-        ],
+          { 
+            data: [20, 21, 22, 23, 22, 21, 24], 
+            label: "Temperature (°C)",
+            color: (opacity = 1) => `rgba(255, 99, 132, ${opacity * 0.6})` // Red color
+          },
+          { 
+            data: [50, 55, 53, 57, 56, 54, 58], 
+            label: "Humidity (%)",
+            color: (opacity = 1) => `rgba(54, 162, 235, ${opacity * 0.6})` // Blue color
+          },
+          { 
+            data: [6.8, 6.9, 6.8, 6.7, 6.8, 6.9, 6.8], 
+            label: "pH Level",
+            color: (opacity = 1) => `rgba(75, 192, 192, ${opacity * 0.6})` // Green color
+          },
+          { 
+            data: [2.0, 2.1, 2.0, 2.2, 2.1, 2.0, 2.3], 
+            label: "EC Level (mS/cm)",
+            color: (opacity = 1) => `rgba(255, 206, 86, ${opacity * 0.6})` // Yellow color
+          },
+          { 
+            data: [70, 72, 68, 74, 71, 73, 75], 
+            label: "Soil Moisture (%)",
+            color: (opacity = 1) => `rgba(153, 102, 255, ${opacity * 0.6})` // Light Purple
+          },
+      ],
       };
       setChartData(newData);
       setLoading(false);
@@ -75,7 +98,7 @@ export default function DashboardScreen({ navigation }) {
       {/* Cards Grid */}
       <View style={styles.gridContainer}>
         {/* Soil Moisture */}
-        <Card style={styles.card}>
+        <Card style={styles.card} onPress={() => navigation.navigate('SoilMoisture')}>
           <Card.Content style={styles.cardContent}>
             <Icon name="opacity" size={30} color={COLORS.green} />
             <Text style={styles.cardTitle}>Soil Moisture</Text>
@@ -86,7 +109,7 @@ export default function DashboardScreen({ navigation }) {
         </Card>
 
         {/* Temperature */}
-        <Card style={styles.card}>
+        <Card style={styles.card} onPress={() => navigation.navigate('Temperature')}>
           <Card.Content style={styles.cardContent}>
             <Icon name="device-thermostat" size={30} color={COLORS.green} />
             <Text style={styles.cardTitle}>Temperature</Text>
@@ -97,7 +120,7 @@ export default function DashboardScreen({ navigation }) {
         </Card>
 
         {/* Humidity */}
-        <Card style={styles.card}>
+        <Card style={styles.card} onPress={() => navigation.navigate('Humidity')}>
           <Card.Content style={styles.cardContent}>
             <Icon name="water-drop" size={30} color={COLORS.green} />
             <Text style={styles.cardTitle}>Humidity</Text>
@@ -108,7 +131,7 @@ export default function DashboardScreen({ navigation }) {
         </Card>
 
         {/* pH Level */}
-        <Card style={styles.card}>
+        <Card style={styles.card} onPress={() => navigation.navigate('PhLevel')}>
           <Card.Content style={styles.cardContent}>
             <Icon name="science" size={30} color={COLORS.green} />
             <Text style={styles.cardTitle}>pH Level</Text>
@@ -119,7 +142,7 @@ export default function DashboardScreen({ navigation }) {
         </Card>
 
         {/* EC Level */}
-        <Card style={styles.card}>
+        <Card style={styles.card} onPress={() => navigation.navigate('EcLevel')}>
           <Card.Content style={styles.cardContent}>
             <Icon name="electrical-services" size={30} color={COLORS.green} />
             <Text style={styles.cardTitle}>EC Level</Text>
