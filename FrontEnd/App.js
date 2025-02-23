@@ -8,6 +8,13 @@ import RegisterScreen from './app/screens/RegisterScreen';
 import ViewImageScreen from './app/screens/ViewImageScreen';
 import HomeScreen from './app/screens/HomeScreen'; // Bottom Tab Navigation
 import DashboardScreen from './app/screens/DashboardScreen';
+
+import SoilMoistureScreen from './app/screens/SoilMoistureScreen';
+import TemperatureScreen from './app/screens/TemperatureScreen';
+import HumidityScreen from './app/screens/HumidityScreen';
+import PhLevelScreen from './app/screens/PhLevelScreen';
+import EcLevelScreen from './app/screens/EcLevelScreen';
+
 import LandingScreen from './app/screens/LandingScreen';
 import PlantationsScreen from './app/screens/PlantationsScreen';
 import DetailsScreen from './app/compononts/PlantDetails';
@@ -92,6 +99,36 @@ export default function App() {
           component={DeviceDetailsScreen} 
           options={{ headerShown: false }} 
         />
+         {/* Added Parameter Screens */}
+        <Stack.Screen 
+          name="SoilMoisture" 
+          component={SoilMoistureScreen} 
+          options={{ title: 'Soil Moisture' }} 
+        />
+
+        <Stack.Screen 
+          name="Temperature" 
+          component={TemperatureScreen} 
+          options={{ title: 'Temperature' }} 
+        />
+
+        <Stack.Screen 
+          name="Humidity" 
+          component={HumidityScreen} 
+          options={{ title: 'Humidity' }} 
+        />
+
+        <Stack.Screen 
+          name="PhLevel" 
+          component={PhLevelScreen} 
+          options={{ title: 'pH Level' }} 
+        />
+        <Stack.Screen 
+          name="EcLevel" 
+          component={EcLevelScreen} 
+          options={{ title: 'EC Level' }} 
+        />
+
       </Stack.Navigator>
     </NavigationContainer>
   );
