@@ -42,8 +42,8 @@ export default function TemperatureScreen() {
           yAxisInterval={1}
           chartConfig={{
             backgroundColor: "#f5f5f5",
-            backgroundGradientFrom: "#e3f2fd",
-            backgroundGradientTo: "#bbdefb",
+            backgroundGradientFrom: "#fff",
+            backgroundGradientTo: "#fff",
             decimalPlaces: 1,
             color: (opacity = 1) => `rgba(255, 99, 132, ${opacity})`,
             labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,

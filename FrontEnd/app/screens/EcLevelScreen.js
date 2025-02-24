@@ -24,7 +24,7 @@ export default function EcLevelScreen() {
           { 
             data: [2.5, 2.6, 2.5, 2.7, 2.6, 2.5, 2.7], 
             label: "EC Level",
-            color: (opacity = 1) => `rgba(75, 192, 192, ${opacity * 0.6})`
+            color: (opacity = 1) => `rgba(255, 206, 86, ${opacity * 0.6})`
           }
         ],
       });
@@ -35,7 +35,7 @@ export default function EcLevelScreen() {
   const handleSetEcLevel = () => {
     setIsSettingEc(true);
     setTimeout(() => {
-      setCurrentEcLevel(ecLevel);
+      setCurrentEcLevel(parseFloat(ecLevel.toFixed(1)));
       setIsSettingEc(false);
     }, 1500);
   };
@@ -54,9 +54,9 @@ export default function EcLevelScreen() {
           yAxisSuffix=""
           yAxisInterval={1}
           chartConfig={{
-            backgroundColor: "#f5f5f5",
-            backgroundGradientFrom: "#e3f2fd",
-            backgroundGradientTo: "#bbdefb",
+            backgroundColor: "#fff",
+            backgroundGradientFrom: "#fff",
+            backgroundGradientTo: "#fff",
             decimalPlaces: 1,
             color: (opacity = 1) => `rgba(75, 192, 192, ${opacity})`,
             labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,

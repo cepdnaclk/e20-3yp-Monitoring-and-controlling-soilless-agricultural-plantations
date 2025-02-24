@@ -35,7 +35,7 @@ export default function PhLevelScreen() {
   const handleSetPhLevel = () => {
     setIsSettingPh(true);
     setTimeout(() => {
-      setCurrentPhLevel(phLevel);
+      setCurrentPhLevel(phLevel.toFixed(1));
       setIsSettingPh(false);
     }, 1500);
   };
@@ -93,7 +93,7 @@ export default function PhLevelScreen() {
           minimumTrackTintColor="#3498db"
         />
 
-        <TouchableOpacity onPress={() => setPhLevel(prev => Math.min(14, prev + 0.1))} style={styles.iconButton}>
+        <TouchableOpacity onPress={() => setPhLevel(prev => Math.min(7, prev + 0.1))} style={styles.iconButton}>
           <Ionicons name="add-circle-outline" size={30} color="black" />
         </TouchableOpacity>
       </View>
