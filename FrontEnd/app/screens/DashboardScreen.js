@@ -52,7 +52,7 @@ export default function DashboardScreen({ navigation }) {
   // };
 
   const getStatusColor = (value) => {
-    if (value === 'Optimal' || value === '22°C') {
+    if (value === 'Optimal' || value === '25°C') {
       return 'green'; // Green for optimal status
     } else if (value === '55%' || value === '6.8 (Optimal)') {
       return 'yellow'; // Yellow for warning status
@@ -114,7 +114,7 @@ export default function DashboardScreen({ navigation }) {
             <Icon name="device-thermostat" size={30} color={COLORS.green} />
             <Text style={styles.cardTitle}>Temperature</Text>
             <Text style={styles.cardText}>
-              22°C <View style={[styles.statusDot, { backgroundColor: getStatusColor('22°C') }]} />
+              25°C <View style={[styles.statusDot, { backgroundColor: getStatusColor('25°C') }]} />
             </Text>
           </Card.Content>
         </Card>
