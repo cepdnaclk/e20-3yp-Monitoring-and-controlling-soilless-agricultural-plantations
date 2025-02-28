@@ -21,7 +21,7 @@ export default function HumidityScreen() {
           { 
             data: [50, 55, 53, 57, 56, 54, 58], // Humidity data
             label: "Humidity (%)",
-            color: (opacity = 1) => `rgba(75, 192, 192, ${opacity * 0.6})` // Green color
+            color: (opacity = 1) => `rgba(54, 162, 235, ${opacity * 0.6})` // Blue color
           }
         ],
       });
@@ -44,8 +44,8 @@ export default function HumidityScreen() {
           yAxisInterval={1}
           chartConfig={{
             backgroundColor: "#f5f5f5",
-            backgroundGradientFrom: "#e3f2fd",
-            backgroundGradientTo: "#bbdefb",
+            backgroundGradientFrom: "#fff",
+            backgroundGradientTo: "#fff",
             decimalPlaces: 1,
             color: (opacity = 1) => `rgba(75, 192, 192, ${opacity})`, // Green color
             labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,

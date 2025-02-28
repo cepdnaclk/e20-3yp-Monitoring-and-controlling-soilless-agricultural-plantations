@@ -1,0 +1,1 @@
+add serviceAccountKey.json if you want to continue with real time database into this directory

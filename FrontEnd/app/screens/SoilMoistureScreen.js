@@ -47,7 +47,7 @@ export default function SoilMoistureScreen({ navigation }) {
           { 
             data: [70, 72, 68, 74, 71, 73, 75], 
             label: "Soil Moisture (%)",
-            color: (opacity = 1) => `rgba(153, 102, 255, ${opacity * 0.6})`
+            color: (opacity = 1) => `rgba(153, 102, 255, ${opacity * 0.6})` // Light Purple
           }
         ],
       });

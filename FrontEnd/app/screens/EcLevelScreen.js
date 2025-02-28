@@ -47,7 +47,7 @@ export default function EcLevelScreen({ navigation }) {
           { 
             data: [2.5, 2.6, 2.5, 2.7, 2.6, 2.5, 2.7], 
             label: "EC Level",
-            color: (opacity = 1) => `rgba(75, 192, 192, ${opacity * 0.6})`
+            color: (opacity = 1) => `rgba(255, 206, 86, ${opacity * 0.6})`
           }
         ],
       });
