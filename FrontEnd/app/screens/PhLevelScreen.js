@@ -28,7 +28,7 @@ export default function PhLevelScreen({ navigation }) {
           setPhLevel(data.pHTarget);
           setCurrentPhLevel(data.pHTarget);
         } else {
-          console.log("❌ No pH target found in Firestore. Using default value.");
+          console.log("❌ No pH target found in Firestore. Using default values");
         }
       } catch (error) {
         console.error("🔥 Firestore Error fetching pH Target:", error);
