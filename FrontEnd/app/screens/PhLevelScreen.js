@@ -8,23 +8,29 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "../firebaseConfig"; // Firestore reference
 import COLORS from '../config/colors';
 
-export default function PhLevelScreen({ navigation }) {
+export default function PhLevelScreen({ navigation, route }) {
+  const { userId } = route.params;  // ✅ Get userId from navigation params
   const [chartData, setChartData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [phLevel, setPhLevel] = useState(6.8); // Temporary adjusting value
   const [currentPhLevel, setCurrentPhLevel] = useState(6.8); // Actual set value
   const [isSetting, setIsSetting] = useState(false);
 
-  // 📌 Fetch the current pH level from Firestore when component loads
+  // ✅ Fetch user-specific pH control settings from Firestore
   useEffect(() => {
+    if (!userId) {
+      console.error("❌ No User ID provided!");
+      return;
+    }
+
     const fetchPhLevel = async () => {
       try {
-        const docRef = doc(db, "control_settings", "y4oEy6hH89sgZA7qrX90");  
+        const docRef = doc(db, `users/${userId}/control_settings`, "1");
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
           const data = docSnap.data();
-          console.log("📡 Fetched pH Target from Firestore:", data.pHTarget);
+          console.log("📡 Fetched User-Specific pH Target:", data.pHTarget);
           setPhLevel(data.pHTarget);
           setCurrentPhLevel(data.pHTarget);
         } else {
@@ -36,9 +42,9 @@ export default function PhLevelScreen({ navigation }) {
     };
 
     fetchPhLevel();
-  }, []);
+  }, [userId]);
 
-  // 📌 Simulated historical pH level data (Replace with Firestore query later)
+  // ✅ Simulated historical pH level data (Replace with Firestore query later)
   useEffect(() => {
     setTimeout(() => {
       setChartData({
@@ -55,20 +61,25 @@ export default function PhLevelScreen({ navigation }) {
     }, 1000);
   }, []);
 
-  // 📌 Adjust the pH level within 0-14
+  // ✅ Adjust the pH level within 0-14
   const adjustPh = (change) => {
     setPhLevel(prev => Math.min(14, Math.max(0, prev + change)));
   };
 
-  // 📌 Update Firestore with new pH level
+  // ✅ Update Firestore with new pH level for the user
   const handleSetValue = async () => {
+    if (!userId) {
+      console.error("❌ No User ID provided!");
+      return;
+    }
+
     setIsSetting(true);
 
     try {
-      const docRef = doc(db, "control_settings", "y4oEy6hH89sgZA7qrX90");  
+      const docRef = doc(db, `users/${userId}/control_settings`, "1");
       await setDoc(docRef, { pHTarget: phLevel }, { merge: true });
 
-      console.log("✅ pH Target updated in Firestore:", phLevel);
+      console.log("✅ User-Specific pH Target updated in Firestore:", phLevel);
       setCurrentPhLevel(phLevel);
     } catch (error) {
       console.error("❌ Firestore Error updating pH Target:", error);
