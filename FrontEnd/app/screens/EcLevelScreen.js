@@ -1,21 +1,44 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity, ActivityIndicator } from 'react-native';
+import Slider from '@react-native-community/slider';
 import { LineChart } from 'react-native-chart-kit';
-import { Dimensions } from 'react-native';
 import { Button } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
-import Slider from '@react-native-community/slider';
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { db } from "../firebaseConfig"; // Firestore reference
 import COLORS from '../config/colors';
 
-const screenWidth = Dimensions.get("window").width;
-
-export default function EcLevelScreen() {
-  const [ecLevel, setEcLevel] = useState(2.5);
-  const [currentEcLevel, setCurrentEcLevel] = useState(2.5);
-  const [isSettingEc, setIsSettingEc] = useState(false);
+export default function EcLevelScreen({ navigation }) {
   const [chartData, setChartData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [ecLevel, setEcLevel] = useState(2.5); // Temporary adjusting value
+  const [currentEcLevel, setCurrentEcLevel] = useState(2.5); // Actual set value
+  const [isSetting, setIsSetting] = useState(false);
 
+  // 📌 Fetch the current EC target from Firestore when component loads
+  useEffect(() => {
+    const fetchEcLevel = async () => {
+      try {
+        const docRef = doc(db, "control_settings", "y4oEy6hH89sgZA7qrX90");  
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          console.log("📡 Fetched EC Target from Firestore:", data.ecTarget);
+          setEcLevel(data.ecTarget);
+          setCurrentEcLevel(data.ecTarget);
+        } else {
+          console.log("❌ No EC target found in Firestore. Using default value.");
+        }
+      } catch (error) {
+        console.error("🔥 Firestore Error fetching EC Target:", error);
+      }
+    };
+
+    fetchEcLevel();
+  }, []);
+
+  // 📌 Simulated historical EC level data (Replace with Firestore query later)
   useEffect(() => {
     setTimeout(() => {
       setChartData({
@@ -32,12 +55,26 @@ export default function EcLevelScreen() {
     }, 1000);
   }, []);
 
-  const handleSetEcLevel = () => {
-    setIsSettingEc(true);
-    setTimeout(() => {
+  // 📌 Adjust the EC level within 0-10 range
+  const adjustEc = (change) => {
+    setEcLevel(prev => Math.min(10, Math.max(0, prev + change)));
+  };
+
+  // 📌 Update Firestore with new EC level
+  const handleSetValue = async () => {
+    setIsSetting(true);
+
+    try {
+      const docRef = doc(db, "control_settings", "y4oEy6hH89sgZA7qrX90");  
+      await setDoc(docRef, { ecTarget: ecLevel }, { merge: true });
+
+      console.log("✅ EC Target updated in Firestore:", ecLevel);
       setCurrentEcLevel(ecLevel);
-      setIsSettingEc(false);
-    }, 1500);
+    } catch (error) {
+      console.error("❌ Firestore Error updating EC Target:", error);
+    }
+
+    setIsSetting(false);
   };
 
   return (
@@ -49,58 +86,65 @@ export default function EcLevelScreen() {
       ) : (
         <LineChart
           data={chartData}
-          width={screenWidth - 40}
+          width={Dimensions.get("window").width - 40}
           height={220}
           yAxisSuffix=""
-          yAxisInterval={1}
           chartConfig={{
-            backgroundColor: "#f5f5f5",
-            backgroundGradientFrom: "#e3f2fd",
-            backgroundGradientTo: "#bbdefb",
+            backgroundGradientFrom: "#fff",
+            backgroundGradientTo: "#fff",
             decimalPlaces: 1,
             color: (opacity = 1) => `rgba(75, 192, 192, ${opacity})`,
             labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-            style: { borderRadius: 10 },
-            propsForDots: { r: "5", strokeWidth: "2", stroke: "#3498db" },
+            style: { borderRadius: 16 },
           }}
           bezier
-          style={{ marginVertical: 10, borderRadius: 10 }}
+          style={{ marginVertical: 8, borderRadius: 16 }}
         />
       )}
 
+      {/* Display Current EC Level */}
       <View style={styles.currentValueContainer}>
         <Text style={styles.currentValueLabel}>Current EC Level:</Text>
         <Text style={styles.currentValueText}>{currentEcLevel}</Text>
       </View>
 
+      {/* Adjusting Value */}
       <View style={styles.adjustingValueContainer}>
-        <Text style={styles.currentValueLabel}>Adjusting EC Level:</Text>
-        <Text style={styles.currentValueText}>{ecLevel.toFixed(1)}</Text>
+        <Text style={styles.currentValue}>Adjusting Value: {ecLevel}</Text>
       </View>
 
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity onPress={() => setEcLevel(prev => Math.max(0, prev - 0.1))} style={styles.iconButton}>
-          <Ionicons name="remove-circle-outline" size={30} color="black" />
-        </TouchableOpacity>
+      {/* Adjustment Controls */}
+      <View style={styles.controlContainer}>
+        <Text>Adjust EC Level:</Text>
 
-        <Slider
-          style={{ width: 200, height: 40 }}
-          minimumValue={0}
-          maximumValue={10}
-          step={0.1}
-          value={ecLevel}
-          onValueChange={setEcLevel}
-          minimumTrackTintColor="#3498db"
-        />
+        {/* Slider Controls */}
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity onPress={() => adjustEc(-0.1)} style={styles.iconButton}>
+            <Ionicons name="remove-circle-outline" size={30} color="black" />
+          </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => setEcLevel(prev => Math.min(10, prev + 0.1))} style={styles.iconButton}>
-          <Ionicons name="add-circle-outline" size={30} color="black" />
-        </TouchableOpacity>
+          <Slider
+            style={{ width: 200, height: 40 }}
+            minimumValue={0}
+            maximumValue={10}
+            step={0.1}
+            value={ecLevel}
+            onValueChange={setEcLevel}
+            minimumTrackTintColor={COLORS.green || "#00C853"} 
+            maximumTrackTintColor="#ccc"
+            thumbTintColor="#000"
+          />
+
+          <TouchableOpacity onPress={() => adjustEc(0.1)} style={styles.iconButton}>
+            <Ionicons name="add-circle-outline" size={30} color="black" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Set Value Button */}
+        <Button mode="contained" onPress={handleSetValue} disabled={isSetting}>
+          {isSetting ? "Setting..." : `Set to ${ecLevel}`}
+        </Button>
       </View>
-
-      <Button mode="contained" onPress={handleSetEcLevel} disabled={isSettingEc} style={styles.setButton}>
-        {isSettingEc ? "Setting..." : `Set to ${ecLevel.toFixed(1)}`}
-      </Button>
     </View>
   );
 }
@@ -108,7 +152,6 @@ export default function EcLevelScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, backgroundColor: COLORS.lightGreen || "#E8F5E9" },
   title: { fontSize: 24, fontWeight: 'bold', marginBottom: 10 },
-  currentValue: { fontSize: 18, marginVertical: 10 },
   currentValueContainer: { 
     backgroundColor: "#dff0d8", 
     padding: 10, 
@@ -125,14 +168,8 @@ const styles = StyleSheet.create({
     alignItems: "center", 
     marginBottom: 10 
   },
-  
   controlContainer: { marginTop: 20, alignItems: "center" },
-  buttonContainer: { flexDirection: "row", alignItems: "center", marginTop: 10 , justifyContent: 'center'},
-  iconButton: { padding: 5,alignItems: 'center'},
-
-  setButton: {
-    width: 150, 
-    alignSelf: 'center', // Center the button horizontally
-    marginTop: 10, //Adds a bit of space between the slider and button
-  },
+  buttonContainer: { flexDirection: "row", alignItems: "center", marginTop: 10 },
+  iconButton: { padding: 5 },
 });
+

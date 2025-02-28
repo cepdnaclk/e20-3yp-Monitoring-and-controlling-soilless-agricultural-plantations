@@ -1,22 +1,47 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity, ActivityIndicator } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { LineChart } from 'react-native-chart-kit';
 import { Button } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
-import COLORS from '../config/colors'; // Ensure COLORS is correctly imported
+import { collection, doc, getDoc, setDoc } from "firebase/firestore";
+import { db } from "../firebaseConfig"; // Ensure Firebase is initialized
+import COLORS from '../config/colors';
 
 export default function SoilMoistureScreen({ navigation }) {
   const [chartData, setChartData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [moistureLevel, setMoistureLevel] = useState(78); // Temporary adjusting value
   const [currentMoistureLevel, setCurrentMoistureLevel] = useState(78); // Actual set value
-  const [isSetting, setIsSetting] = useState(false); // To track ongoing setting process
+  const [isSetting, setIsSetting] = useState(false);
 
+  // 📌 Fetch the current moisture level from Firestore when component loads
   useEffect(() => {
-    // Simulated soil moisture data
+    const fetchMoistureLevel = async () => {
+      try {
+        const docRef = doc(db, "control_settings", "y4oEy6hH89sgZA7qrX90");  
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          console.log("📡 Fetched Soil Moisture Target from Firestore:", data.soilMoistureTarget);
+          setMoistureLevel(data.soilMoistureTarget);
+          setCurrentMoistureLevel(data.soilMoistureTarget);
+        } else {
+          console.log("❌ No moisture target found in Firestore. Using default value.");
+        }
+      } catch (error) {
+        console.error("🔥 Firestore Error fetching Soil Moisture Target:", error);
+      }
+    };
+
+    fetchMoistureLevel();
+  }, []);
+
+  // 📌 Simulated chart data for soil moisture history
+  useEffect(() => {
     setTimeout(() => {
-      const newData = {
+      setChartData({
         labels: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
         datasets: [
           { 
@@ -25,24 +50,31 @@ export default function SoilMoistureScreen({ navigation }) {
             color: (opacity = 1) => `rgba(153, 102, 255, ${opacity * 0.6})`
           }
         ],
-      };
-      setChartData(newData);
+      });
       setLoading(false);
     }, 1000);
   }, []);
 
-  // Function to adjust moisture level
+  // 📌 Adjust the moisture level within 0-100%
   const adjustMoisture = (change) => {
-    setMoistureLevel(prev => Math.min(100, Math.max(0, prev + change))); // Keeps within 0-100 range
+    setMoistureLevel(prev => Math.min(100, Math.max(0, prev + change)));
   };
 
-  // Function to set the current value with a delay
-  const handleSetValue = () => {
-    setIsSetting(true); // Show that setting is in progress
-    setTimeout(() => {
+  // 📌 Update Firestore with new moisture level
+  const handleSetValue = async () => {
+    setIsSetting(true);
+
+    try {
+      const docRef = doc(db, "control_settings", "y4oEy6hH89sgZA7qrX90");  
+      await setDoc(docRef, { soilMoistureTarget: moistureLevel }, { merge: true });
+
+      console.log("✅ Soil Moisture Target updated in Firestore:", moistureLevel);
       setCurrentMoistureLevel(moistureLevel);
-      setIsSetting(false);
-    }, 1500); // Delay to simulate setting process
+    } catch (error) {
+      console.error("❌ Firestore Error updating Soil Moisture Target:", error);
+    }
+
+    setIsSetting(false);
   };
 
   return (
@@ -50,7 +82,7 @@ export default function SoilMoistureScreen({ navigation }) {
       <Text style={styles.title}>Soil Moisture</Text>
 
       {loading ? (
-        <Text>Loading...</Text>
+        <ActivityIndicator size="large" color="#3498db" />
       ) : (
         <LineChart
           data={chartData}
@@ -70,22 +102,22 @@ export default function SoilMoistureScreen({ navigation }) {
         />
       )}
 
-      {/* Display current committed value */}
+      {/* Display Current Moisture Level */}
       <View style={styles.currentValueContainer}>
         <Text style={styles.currentValueLabel}>Current Moisture Level:</Text>
         <Text style={styles.currentValueText}>{currentMoistureLevel}%</Text>
       </View>
 
-      {/* Temporary Adjusting Value */}
+      {/* Adjusting Value */}
       <View style={styles.adjustingValueContainer}>
         <Text style={styles.currentValue}>Adjusting Value: {moistureLevel}%</Text>
       </View>
 
-      {/* Adjustment Section */}
+      {/* Adjustment Controls */}
       <View style={styles.controlContainer}>
         <Text>Adjust Moisture Level:</Text>
 
-        {/* Volume-style control */}
+        {/* Slider Controls */}
         <View style={styles.buttonContainer}>
           <TouchableOpacity onPress={() => adjustMoisture(-1)} style={styles.iconButton}>
             <Ionicons name="remove-circle-outline" size={30} color="black" />
@@ -120,7 +152,6 @@ export default function SoilMoistureScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, backgroundColor: COLORS.lightGreen || "#E8F5E9" },
   title: { fontSize: 24, fontWeight: 'bold', marginBottom: 10 },
-  currentValue: { fontSize: 18, marginVertical: 10 },
   currentValueContainer: { 
     backgroundColor: "#dff0d8", 
     padding: 10, 
