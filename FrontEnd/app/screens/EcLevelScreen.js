@@ -8,27 +8,39 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "../firebaseConfig"; // Firestore reference
 import COLORS from '../config/colors';
 
-export default function EcLevelScreen({ navigation }) {
+export default function EcLevelScreen({ navigation, route }) {
+  const { userId } = route.params;  // ✅ Get userId from navigation params
   const [chartData, setChartData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [ecLevel, setEcLevel] = useState(2.5); // Temporary adjusting value
   const [currentEcLevel, setCurrentEcLevel] = useState(2.5); // Actual set value
   const [isSetting, setIsSetting] = useState(false);
 
-  // 📌 Fetch the current EC target from Firestore when component loads
+  // ✅ Fetch user-specific EC control settings from Firestore
   useEffect(() => {
+    if (!userId) {
+      console.error("❌ No User ID provided!");
+      return;
+    }
+
     const fetchEcLevel = async () => {
       try {
-        const docRef = doc(db, "control_settings", "y4oEy6hH89sgZA7qrX90");  
+        const docRef = doc(db, `users/${userId}/control_settings`, "1");
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
           const data = docSnap.data();
-          console.log("📡 Fetched EC Target from Firestore:", data.ecTarget);
+          console.log("📡 Fetched User-Specific EC Target:", data.ecTarget);
           setEcLevel(data.ecTarget);
           setCurrentEcLevel(data.ecTarget);
         } else {
-          console.log("❌ No EC target found in Firestore. Using default value.");
+          console.log("⚠️ No EC target found in Firestore. Using default values...");
+
+          // Automatically create default settings
+          await setDoc(docRef, { ecTarget: 2.5 }, { merge: true });
+
+          setEcLevel(2.5);
+          setCurrentEcLevel(2.5);
         }
       } catch (error) {
         console.error("🔥 Firestore Error fetching EC Target:", error);
@@ -36,9 +48,9 @@ export default function EcLevelScreen({ navigation }) {
     };
 
     fetchEcLevel();
-  }, []);
+  }, [userId]);
 
-  // 📌 Simulated historical EC level data (Replace with Firestore query later)
+  // ✅ Simulated historical EC level data (Replace with Firestore query later)
   useEffect(() => {
     setTimeout(() => {
       setChartData({
@@ -55,20 +67,25 @@ export default function EcLevelScreen({ navigation }) {
     }, 1000);
   }, []);
 
-  // 📌 Adjust the EC level within 0-10 range
+  // ✅ Adjust the EC target within 0-10 range
   const adjustEc = (change) => {
     setEcLevel(prev => Math.min(10, Math.max(0, prev + change)));
   };
 
-  // 📌 Update Firestore with new EC level
+  // ✅ Update Firestore with new EC target for the user
   const handleSetValue = async () => {
+    if (!userId) {
+      console.error("❌ No User ID provided!");
+      return;
+    }
+
     setIsSetting(true);
 
     try {
-      const docRef = doc(db, "control_settings", "y4oEy6hH89sgZA7qrX90");  
+      const docRef = doc(db, `users/${userId}/control_settings`, "1");
       await setDoc(docRef, { ecTarget: ecLevel }, { merge: true });
 
-      console.log("✅ EC Target updated in Firestore:", ecLevel);
+      console.log("✅ User-Specific EC Target updated in Firestore:", ecLevel);
       setCurrentEcLevel(ecLevel);
     } catch (error) {
       console.error("❌ Firestore Error updating EC Target:", error);
@@ -172,4 +189,3 @@ const styles = StyleSheet.create({
   buttonContainer: { flexDirection: "row", alignItems: "center", marginTop: 10 },
   iconButton: { padding: 5 },
 });
-
