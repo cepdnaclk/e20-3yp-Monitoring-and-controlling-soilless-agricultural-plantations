@@ -10,7 +10,7 @@ export default function AlertsScreen({ route }) {
   const { userId } = route.params;
   const [alerts, setAlerts] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
-  const alertsMap = new Map(); // ✅ Track active commands per parameter
+  const alertsMap = new Map();
 
   useEffect(() => {
     fetchAlerts();
@@ -47,44 +47,35 @@ export default function AlertsScreen({ route }) {
         const newAlerts = [];
 
         const checkAndSendCommand = (param, current, target, actionIncrease, actionDecrease, threshold) => {
-  const difference = current - target;
-  const alertKey = `${param}-alert`;
+          const difference = current - target;
+          const alertKey = `${param}-alert`;
 
-  if (Math.abs(difference) >= threshold) {
-    // ✅ Determine which command needs to be sent
-    const action = difference > 0 ? actionDecrease : actionIncrease;
-    const value = Math.abs(difference);
+          if (Math.abs(difference) >= threshold) {
+            // ✅ Send control command if outside threshold
+            const action = difference > 0 ? actionDecrease : actionIncrease;
+            const value = Math.abs(difference);
 
-    if (!alertsMap.has(alertKey) || alertsMap.get(alertKey).action !== action) {
-      // ✅ Store alert and track the exact action
-      alertsMap.set(alertKey, {
-        id: alertKey,
-        param, // ✅ Track the specific parameter
-        action, // ✅ Store the actual command sent
-        message: `⚠️ ${param} is off! (Current: ${current.toFixed(2)}, Target: ${target.toFixed(2)})`,
-        timestamp: new Date().toLocaleString(),
-      });
+            if (!alertsMap.has(alertKey)) {
+              alertsMap.set(alertKey, {
+                id: alertKey,
+                message: `⚠️ ${param} is off! (Current: ${current.toFixed(2)}, Target: ${target.toFixed(2)})`,
+                timestamp: new Date().toLocaleString(),
+              });
 
-      sendControlCommand(userId, action, value);
-    }
+              sendControlCommand(userId, action, value);
+            }
 
-    newAlerts.push(alertsMap.get(alertKey));
-  } else {
-    // ✅ Remove alert + send stop command ONLY for the correct action
-    if (alertsMap.has(alertKey)) {
-      const previousAction = alertsMap.get(alertKey).action; // ✅ Get the last action that was sent
-      alertsMap.delete(alertKey);
+            newAlerts.push(alertsMap.get(alertKey));
+          } else {
+            // ✅ Remove alert when value is within range & send stop command
+            if (alertsMap.has(alertKey)) {
+              alertsMap.delete(alertKey);
+              sendStopCommand(userId, actionIncrease); 
+              sendStopCommand(userId, actionDecrease);
+            }
+          }
+        };
 
-      if (previousAction) {
-        sendStopCommand(userId, previousAction); // ✅ Stop ONLY the specific action
-      }
-    }
-  }
-};
-
-        
-
-        // ✅ Apply the fix to all parameters (pH, EC, Soil Moisture)
         checkAndSendCommand("pH Level", latestSensorData.ph, controlSettings.pHTarget, "increase_pH", "decrease_pH", 1);
         checkAndSendCommand("EC Level", latestSensorData.ec, controlSettings.ecTarget, "increase_EC", "decrease_EC", 1);
         checkAndSendCommand("Soil Moisture", latestSensorData.soil_moisture, controlSettings.soilMoistureTarget, "increase_soil_moisture", "decrease_soil_moisture", 10);
