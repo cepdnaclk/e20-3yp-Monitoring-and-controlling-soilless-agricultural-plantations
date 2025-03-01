@@ -89,22 +89,52 @@ export default function DashboardScreen({ navigation, route }) {
           <ActivityIndicator size="large" color={COLORS.green} />
         ) : (
           <LineChart
-            data={chartData}
-            width={Dimensions.get("window").width - 40}
-            height={220}
-            yAxisSuffix=""
-            chartConfig={{
-              backgroundGradientFrom: "#fff",
-              backgroundGradientTo: "#fff",
-              decimalPlaces: 1,
-              color: (opacity = 1) => `rgba(0, 128, 0, ${opacity})`,
-              labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-              style: { borderRadius: 16 },
-              propsForDots: { r: "6", strokeWidth: "2", stroke: COLORS.green },
-            }}
-            bezier
-            style={{ marginVertical: 8, borderRadius: 16 }}
-          />
+  data={{
+    labels: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+    datasets: [
+      {
+        data: chartData?.datasets[0]?.data || [],
+        label: "Temperature (°C)",
+        color: (opacity = 1) => `rgba(255, 99, 132, ${opacity})`, // Red
+      },
+      {
+        data: chartData?.datasets[1]?.data || [],
+        label: "Humidity (%)",
+        color: (opacity = 1) => `rgba(54, 162, 235, ${opacity})`, // Blue
+      },
+      {
+        data: chartData?.datasets[2]?.data || [],
+        label: "pH Level",
+        color: (opacity = 1) => `rgba(75, 192, 192, ${opacity})`, // Teal
+      },
+      {
+        data: chartData?.datasets[3]?.data || [],
+        label: "EC Level (mS/cm)",
+        color: (opacity = 1) => `rgba(255, 206, 86, ${opacity})`, // Yellow
+      },
+      {
+        data: chartData?.datasets[4]?.data || [],
+        label: "Soil Moisture (%)",
+        color: (opacity = 1) => `rgba(153, 102, 255, ${opacity})`, // Purple
+      }
+    ],
+  }}
+  width={Dimensions.get("window").width - 40}
+  height={220}
+  yAxisSuffix=""
+  chartConfig={{
+    backgroundGradientFrom: "#fff",
+    backgroundGradientTo: "#fff",
+    decimalPlaces: 1,
+    color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+    labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+    style: { borderRadius: 16 },
+    propsForDots: { r: "5", strokeWidth: "2", stroke: "#000" },
+  }}
+  bezier
+  style={{ marginVertical: 8, borderRadius: 16 }}
+/>
+
         )}
       </View>
 
@@ -214,7 +244,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cardTitle: {
-    fontSize: 21,
+    fontSize: 18,
     fontWeight: 'bold',
     color: COLORS.green,  // Use green color for title
     marginTop: 5,

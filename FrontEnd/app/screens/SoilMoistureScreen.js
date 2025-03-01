@@ -4,31 +4,43 @@ import Slider from '@react-native-community/slider';
 import { LineChart } from 'react-native-chart-kit';
 import { Button } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
-import { collection, doc, getDoc, setDoc } from "firebase/firestore";
-import { db } from "../firebaseConfig"; // Ensure Firebase is initialized
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { db } from "../firebaseConfig"; // Firestore reference
 import COLORS from '../config/colors';
 
-export default function SoilMoistureScreen({ navigation }) {
+export default function SoilMoistureScreen({ navigation, route }) {
+  const { userId } = route.params;  // ✅ Get userId from navigation params
   const [chartData, setChartData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [moistureLevel, setMoistureLevel] = useState(78); // Temporary adjusting value
   const [currentMoistureLevel, setCurrentMoistureLevel] = useState(78); // Actual set value
   const [isSetting, setIsSetting] = useState(false);
 
-  // 📌 Fetch the current moisture level from Firestore when component loads
+  // ✅ Fetch user-specific Soil Moisture control settings from Firestore
   useEffect(() => {
+    if (!userId) {
+      console.error("❌ No User ID provided!");
+      return;
+    }
+
     const fetchMoistureLevel = async () => {
       try {
-        const docRef = doc(db, "control_settings", "y4oEy6hH89sgZA7qrX90");  
+        const docRef = doc(db, `users/${userId}/control_settings`, "1");
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
           const data = docSnap.data();
-          console.log("📡 Fetched Soil Moisture Target from Firestore:", data.soilMoistureTarget);
+          console.log("📡 Fetched User-Specific Soil Moisture Target:", data.soilMoistureTarget);
           setMoistureLevel(data.soilMoistureTarget);
           setCurrentMoistureLevel(data.soilMoistureTarget);
         } else {
-          console.log("❌ No moisture target found in Firestore. Using default value.");
+          console.log("⚠️ No soil moisture target found in Firestore. Using default values...");
+
+          // Automatically create default settings
+          await setDoc(docRef, { soilMoistureTarget: 78 }, { merge: true });
+
+          setMoistureLevel(78);
+          setCurrentMoistureLevel(78);
         }
       } catch (error) {
         console.error("🔥 Firestore Error fetching Soil Moisture Target:", error);
@@ -36,9 +48,9 @@ export default function SoilMoistureScreen({ navigation }) {
     };
 
     fetchMoistureLevel();
-  }, []);
+  }, [userId]);
 
-  // 📌 Simulated chart data for soil moisture history
+  // ✅ Simulated historical Soil Moisture data (Replace with Firestore query later)
   useEffect(() => {
     setTimeout(() => {
       setChartData({
@@ -47,7 +59,7 @@ export default function SoilMoistureScreen({ navigation }) {
           { 
             data: [70, 72, 68, 74, 71, 73, 75], 
             label: "Soil Moisture (%)",
-            color: (opacity = 1) => `rgba(153, 102, 255, ${opacity * 0.6})` // Light Purple
+            color: (opacity = 1) => `rgba(153, 102, 255, ${opacity * 0.6})`
           }
         ],
       });
@@ -55,20 +67,25 @@ export default function SoilMoistureScreen({ navigation }) {
     }, 1000);
   }, []);
 
-  // 📌 Adjust the moisture level within 0-100%
+  // ✅ Adjust the Soil Moisture target within 0-100%
   const adjustMoisture = (change) => {
     setMoistureLevel(prev => Math.min(100, Math.max(0, prev + change)));
   };
 
-  // 📌 Update Firestore with new moisture level
+  // ✅ Update Firestore with new Soil Moisture target for the user
   const handleSetValue = async () => {
+    if (!userId) {
+      console.error("❌ No User ID provided!");
+      return;
+    }
+
     setIsSetting(true);
 
     try {
-      const docRef = doc(db, "control_settings", "y4oEy6hH89sgZA7qrX90");  
+      const docRef = doc(db, `users/${userId}/control_settings`, "1");
       await setDoc(docRef, { soilMoistureTarget: moistureLevel }, { merge: true });
 
-      console.log("✅ Soil Moisture Target updated in Firestore:", moistureLevel);
+      console.log("✅ User-Specific Soil Moisture Target updated in Firestore:", moistureLevel);
       setCurrentMoistureLevel(moistureLevel);
     } catch (error) {
       console.error("❌ Firestore Error updating Soil Moisture Target:", error);
@@ -79,7 +96,7 @@ export default function SoilMoistureScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Soil Moisture</Text>
+      <Text style={styles.title}>Soil Moisture Adjustment</Text>
 
       {loading ? (
         <ActivityIndicator size="large" color="#3498db" />
@@ -102,9 +119,9 @@ export default function SoilMoistureScreen({ navigation }) {
         />
       )}
 
-      {/* Display Current Moisture Level */}
+      {/* Display Current Soil Moisture Level */}
       <View style={styles.currentValueContainer}>
-        <Text style={styles.currentValueLabel}>Current Moisture Level:</Text>
+        <Text style={styles.currentValueLabel}>Current Soil Moisture Level:</Text>
         <Text style={styles.currentValueText}>{currentMoistureLevel}%</Text>
       </View>
 
@@ -115,7 +132,7 @@ export default function SoilMoistureScreen({ navigation }) {
 
       {/* Adjustment Controls */}
       <View style={styles.controlContainer}>
-        <Text>Adjust Moisture Level:</Text>
+        <Text>Adjust Soil Moisture Level:</Text>
 
         {/* Slider Controls */}
         <View style={styles.buttonContainer}>

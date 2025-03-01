@@ -1,53 +1,111 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import Icon from 'react-native-vector-icons/MaterialIcons';
-import COLORS from '../config/colors';
+import React, { useState, useEffect, useCallback } from "react";
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { collection, doc, getDoc, onSnapshot } from "firebase/firestore";
+import { db } from "../firebaseConfig";
+import COLORS from "../config/colors";
 
+// Import the control command function
+import { sendControlCommand } from "../utils/controlCommands"; 
 
-export default function AlertsScreen() {
+export default function AlertsScreen({ route }) {
+  const { userId } = route.params;
   const [alerts, setAlerts] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    loadAlerts();
-  }, []);
+    fetchAlerts();
+  }, [userId]);
 
-  // Simulate real-time alerts (can be replaced with API data)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const newAlert = {
-        id: Date.now().toString(),
-        message: '⚠️ High EC levels detected!',
-        timestamp: new Date().toLocaleString(),
-      };
-      setAlerts((prevAlerts) => [...prevAlerts, newAlert]);
-      saveAlerts([...alerts, newAlert]);
-    }, 150000); // Adds a new alert every 15 seconds (for demo)
+  // ✅ Function to fetch alerts & send control commands
+  const fetchAlerts = async () => {
+    if (!userId) {
+      console.error("❌ No User ID provided!");
+      return;
+    }
 
-    return () => clearInterval(interval);
-  }, [alerts]);
+    setRefreshing(true); // ✅ Start refreshing UI
 
-  const saveAlerts = async (alerts) => {
-    await AsyncStorage.setItem('alerts', JSON.stringify(alerts));
+    const fetchControlSettings = async () => {
+      try {
+        const docRef = doc(db, `users/${userId}/control_settings`, "1");
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          return docSnap.data();
+        } else {
+          console.error("❌ No control settings found for this user.");
+          return null;
+        }
+      } catch (error) {
+        console.error("🔥 Firestore Error fetching control settings:", error);
+        return null;
+      }
+    };
+
+    const sensorDataQuery = collection(db, `users/${userId}/sensor_data`);
+    const unsubscribe = onSnapshot(sensorDataQuery, async (snapshot) => {
+      if (!snapshot.empty) {
+        const latestSensorData = snapshot.docs[0].data();
+        console.log("📡 Latest Sensor Data:", latestSensorData);
+
+        const controlSettings = await fetchControlSettings();
+        if (!controlSettings) return;
+
+        const newAlerts = [];
+
+        // ✅ **Compare sensor values with user-defined settings & send control commands**
+        const checkAndSendCommand = (param, current, target, actionIncrease, actionDecrease, threshold) => {
+          const difference = current - target;
+          if (Math.abs(difference) >= threshold) {
+            const action = difference > 0 ? actionDecrease : actionIncrease;
+            const value = Math.abs(difference); // Amount of change needed
+
+            newAlerts.push({
+              id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              message: `⚠️ ${param} is off! (Current: ${current}, Target: ${target})`,
+              timestamp: new Date().toLocaleString(),
+            });
+
+            sendControlCommand(userId, action, value); // ✅ Send command to Firestore
+          }
+        };
+
+        // ✅ Check each parameter and send commands
+        checkAndSendCommand("pH Level", latestSensorData.ph, controlSettings.pHTarget, "increase_pH", "decrease_pH", 1);
+        checkAndSendCommand("EC Level", latestSensorData.ec, controlSettings.ecTarget, "increase_EC", "decrease_EC", 1);
+        checkAndSendCommand("Soil Moisture", latestSensorData.soil_moisture, controlSettings.soilMoistureTarget, "increase_soil_moisture", "decrease_soil_moisture", 10);
+        checkAndSendCommand("Temperature", latestSensorData.temperature, controlSettings.tempTarget, "increase_temp", "decrease_temp", 2);
+        checkAndSendCommand("Humidity", latestSensorData.humidity, controlSettings.humidityTarget, "increase_humidity", "decrease_humidity", 5);
+
+        if (newAlerts.length > 0) {
+          setAlerts(newAlerts);
+          saveAlerts(newAlerts);
+        }
+
+        setRefreshing(false);
+      }
+    });
+
+    return () => unsubscribe();
   };
 
-  const loadAlerts = async () => {
-    const storedAlerts = await AsyncStorage.getItem('alerts');
-    if (storedAlerts) setAlerts(JSON.parse(storedAlerts));
+  const onRefresh = useCallback(() => {
+    fetchAlerts();
+  }, []);
+
+  const saveAlerts = async (alerts) => {
+    await AsyncStorage.setItem("alerts", JSON.stringify(alerts));
   };
 
   const dismissAlert = async (id) => {
-    const updatedAlerts = alerts.filter(alert => alert.id !== id);
+    const updatedAlerts = alerts.filter((alert) => alert.id !== id);
     setAlerts(updatedAlerts);
-    await AsyncStorage.setItem('alerts', JSON.stringify(updatedAlerts));
+    await AsyncStorage.setItem("alerts", JSON.stringify(updatedAlerts));
   };
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        
-        <Text style={styles.title}>Alerts</Text>
-      </View>
+      <Text style={styles.title}>🚨 Alerts</Text>
       <FlatList
         data={alerts}
         keyExtractor={(item) => item.id}
@@ -60,26 +118,28 @@ export default function AlertsScreen() {
             </TouchableOpacity>
           </View>
         )}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#00C853"]} />
+        }
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: '#E8F5E9' }, // Light green background
+  container: { flex: 1, padding: 20, backgroundColor: "#E8F5E9" },
   title: {
     fontSize: 30,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: COLORS.green,
-    marginLeft: 10, // Adds spacing between the icon and title
   },
   alertItem: {
-    backgroundColor: '#C8E6C9', // Soft green background for alert items
+    backgroundColor: "#C8E6C9",
     padding: 15,
     borderRadius: 10,
     marginBottom: 10,
   },
-  alertText: { color: '#333', fontSize: 16 }, // Dark text for alert message
-  timestamp: { color: '#555', fontSize: 12, marginTop: 5 }, // Dark grey for timestamp
-  dismissText: { color: '#EF4444', fontSize: 14, marginTop: 5, fontWeight: 'bold' }, // Red color for dismiss button
+  alertText: { color: "#333", fontSize: 16 },
+  timestamp: { color: "#555", fontSize: 12, marginTop: 5 },
+  dismissText: { color: "#EF4444", fontSize: 14, marginTop: 5, fontWeight: "bold" },
 });
