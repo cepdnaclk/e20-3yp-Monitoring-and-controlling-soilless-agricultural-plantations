@@ -17,88 +17,114 @@ export default function AlertsScreen({ route }) {
   }, [userId]);
 
   const fetchAlerts = async () => {
-    if (!userId) {
-      console.error("❌ No User ID provided!");
-      return;
-    }
-
-    setRefreshing(true);
-
-    const fetchControlSettings = async () => {
-      try {
-        const docRef = doc(db, `users/${userId}/control_settings`, "1");
-        const docSnap = await getDoc(docRef);
-        return docSnap.exists() ? docSnap.data() : null;
-      } catch (error) {
-        console.error("🔥 Firestore Error fetching control settings:", error);
-        return null;
-      }
-    };
-
-    const sensorDataQuery = collection(db, `users/${userId}/sensor_data`);
-    const unsubscribe = onSnapshot(sensorDataQuery, async (snapshot) => {
-      if (!snapshot.empty) {
-        const latestSensorData = snapshot.docs[0].data();
-        console.log("📡 Latest Sensor Data:", latestSensorData);
-
-        const controlSettings = await fetchControlSettings();
-        if (!controlSettings) return;
-
-        const newAlerts = [];
-
-        const checkAndSendCommand = (param, current, target, actionIncrease, actionDecrease, threshold) => {
-  const difference = current - target;
-  const alertKey = `${param}-alert`;
-
-  if (Math.abs(difference) >= threshold) {
-    // ✅ Determine which command needs to be sent
-    const action = difference > 0 ? actionDecrease : actionIncrease;
-    const value = Math.abs(difference);
-
-    if (!alertsMap.has(alertKey) || alertsMap.get(alertKey).action !== action) {
-      // ✅ Store alert and track the exact action
-      alertsMap.set(alertKey, {
-        id: alertKey,
-        param, // ✅ Track the specific parameter
-        action, // ✅ Store the actual command sent
-        message: `⚠️ ${param} is off! (Current: ${current.toFixed(2)}, Target: ${target.toFixed(2)})`,
-        timestamp: new Date().toLocaleString(),
-      });
-
-      sendControlCommand(userId, action, value);
-    }
-
-    newAlerts.push(alertsMap.get(alertKey));
-  } else {
-    // ✅ Remove alert + send stop command ONLY for the correct action
-    if (alertsMap.has(alertKey)) {
-      const previousAction = alertsMap.get(alertKey).action; // ✅ Get the last action that was sent
-      alertsMap.delete(alertKey);
-
-      if (previousAction) {
-        sendStopCommand(userId, previousAction); // ✅ Stop ONLY the specific action
-      }
-    }
+  if (!userId) {
+    console.error("❌ No User ID provided!");
+    return;
   }
+
+  setRefreshing(true);
+
+  const fetchControlSettings = async () => {
+    try {
+      const docRef = doc(db, `users/${userId}/control_settings`, "1");
+      const docSnap = await getDoc(docRef);
+      return docSnap.exists() ? docSnap.data() : null;
+    } catch (error) {
+      console.error("🔥 Firestore Error fetching control settings:", error);
+      return null;
+    }
+  };
+
+  // ✅ Listen for active commands
+  const activeCommandsQuery = collection(db, `users/${userId}/active_commands`);
+  const unsubscribeActiveCommands = onSnapshot(activeCommandsQuery, (snapshot) => {
+    const activeCommands = snapshot.docs.map((doc) => ({
+      id: `active-${doc.id}`,
+      param: doc.data().action,
+      message: `🚀 Active Command: ${doc.data().action} (Value: ${doc.data().value})`,
+      timestamp: new Date(doc.data().timestamp.seconds * 1000).toLocaleString(),
+    }));
+
+    setAlerts((prevAlerts) => [...prevAlerts.filter(a => !a.id.startsWith("active-")), ...activeCommands]);
+  });
+
+  // ✅ Listen for stop commands
+  const stopCommandsQuery = collection(db, `users/${userId}/stop_commands`);
+  const unsubscribeStopCommands = onSnapshot(stopCommandsQuery, (snapshot) => {
+    const stopCommands = snapshot.docs.map((doc) => ({
+      id: `stop-${doc.id}`,
+      param: doc.data().action,
+      message: `🛑 Stop Command Sent: ${doc.data().action}`,
+      timestamp: new Date(doc.data().timestamp.seconds * 1000).toLocaleString(),
+    }));
+
+    setAlerts((prevAlerts) => [...prevAlerts.filter(a => !a.id.startsWith("stop-")), ...stopCommands]);
+  });
+
+  // ✅ Listen for sensor alerts
+  const sensorDataQuery = collection(db, `users/${userId}/sensor_data`);
+  const unsubscribeSensorData = onSnapshot(sensorDataQuery, async (snapshot) => {
+    if (!snapshot.empty) {
+      const latestSensorData = snapshot.docs[0].data();
+      console.log("📡 Latest Sensor Data:", latestSensorData);
+
+      const controlSettings = await fetchControlSettings();
+      if (!controlSettings) return;
+
+      const newAlerts = [];
+
+      const checkAndSendCommand = (param, current, target, actionIncrease, actionDecrease, threshold) => {
+        const difference = current - target;
+        const alertKey = `${param}-alert`;
+
+        if (Math.abs(difference) >= threshold) {
+          const action = difference > 0 ? actionDecrease : actionIncrease;
+          const value = Math.abs(difference);
+
+          if (!alertsMap.has(alertKey) || alertsMap.get(alertKey).action !== action) {
+            alertsMap.set(alertKey, {
+              id: alertKey,
+              param,
+              action,
+              message: `⚠️ ${param} is off! (Current: ${current.toFixed(2)}, Target: ${target.toFixed(2)})`,
+              timestamp: new Date().toLocaleString(),
+            });
+
+            sendControlCommand(userId, action, value);
+          }
+
+          newAlerts.push(alertsMap.get(alertKey));
+        } else {
+          if (alertsMap.has(alertKey)) {
+            const previousAction = alertsMap.get(alertKey).action;
+            alertsMap.delete(alertKey);
+
+            if (previousAction) {
+              sendStopCommand(userId, previousAction);
+            }
+          }
+        }
+      };
+
+      checkAndSendCommand("pH Level", latestSensorData.ph, controlSettings.pHTarget, "increase_pH", "decrease_pH", 1);
+      checkAndSendCommand("EC Level", latestSensorData.ec, controlSettings.ecTarget, "increase_EC", "decrease_EC", 1);
+      checkAndSendCommand("Soil Moisture", latestSensorData.soil_moisture, controlSettings.soilMoistureTarget, "increase_soil_moisture", "decrease_soil_moisture", 10);
+      checkAndSendCommand("Temperature", latestSensorData.temperature, controlSettings.tempTarget, "increase_temp", "decrease_temp", 2);
+      checkAndSendCommand("Humidity", latestSensorData.humidity, controlSettings.humidityTarget, "increase_humidity", "decrease_humidity", 5);
+
+      setAlerts((prevAlerts) => [...prevAlerts.filter(a => !a.id.endsWith("-alert")), ...newAlerts]);
+    }
+  });
+
+  setRefreshing(false);
+
+  return () => {
+    unsubscribeActiveCommands();
+    unsubscribeStopCommands();
+    unsubscribeSensorData();
+  };
 };
 
-        
-
-        // ✅ Apply the fix to all parameters (pH, EC, Soil Moisture)
-        checkAndSendCommand("pH Level", latestSensorData.ph, controlSettings.pHTarget, "increase_pH", "decrease_pH", 1);
-        checkAndSendCommand("EC Level", latestSensorData.ec, controlSettings.ecTarget, "increase_EC", "decrease_EC", 1);
-        checkAndSendCommand("Soil Moisture", latestSensorData.soil_moisture, controlSettings.soilMoistureTarget, "increase_soil_moisture", "decrease_soil_moisture", 10);
-        checkAndSendCommand("Temperature", latestSensorData.temperature, controlSettings.tempTarget, "increase_temp", "decrease_temp", 2);
-        checkAndSendCommand("Humidity", latestSensorData.humidity, controlSettings.humidityTarget, "increase_humidity", "decrease_humidity", 5);
-
-        setAlerts([...newAlerts]); 
-        saveAlerts(newAlerts);
-      }
-      setRefreshing(false);
-    });
-
-    return () => unsubscribe();
-  };
 
   const onRefresh = useCallback(() => {
     fetchAlerts();

@@ -1,18 +1,19 @@
-import { collection, doc, getDoc, getDocs, query, where, setDoc, deleteDoc } from "firebase/firestore";
+import { collection, doc, getDoc, setDoc, deleteDoc } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 
 // ✅ Send control command (prevents duplicates)
 export const sendControlCommand = async (userId, action, value) => {
   try {
-    const commandRef = doc(db, `users/${userId}/active_commands`, action); // ✅ Use action as doc ID
+    const commandRef = doc(db, `users/${userId}/active_commands`, action);
 
-    // Check if command is already active
+    // ✅ Check if the command is already active
     const existingCommand = await getDoc(commandRef);
     if (existingCommand.exists()) {
       console.log(`⚠️ Command already active: ${action}`);
       return;
     }
 
+    // ✅ Add command to active_commands
     await setDoc(commandRef, {
       action: action,
       value: value,
@@ -28,24 +29,44 @@ export const sendControlCommand = async (userId, action, value) => {
 // ✅ Send stop command (prevents duplicates)
 export const sendStopCommand = async (userId, action) => {
   try {
-    const stopCommandRef = doc(db, `users/${userId}/stop_commands`, action);
-
-    // Check if stop command already exists
-    const existingStopCommand = await getDoc(stopCommandRef);
-    if (existingStopCommand.exists()) {
-      console.log(`⚠️ Stop command already sent: ${action}`);
+    if (!userId || !action) {
+      console.error("🚨 Invalid parameters: userId or action missing.");
       return;
     }
 
+    const activeCommandRef = doc(db, `users/${userId}/active_commands`, action);
+    const stopCommandName = `stop_${action}`; // ✅ Correct stop format
+    const stopCommandRef = doc(db, `users/${userId}/stop_commands`, stopCommandName);
+
+    // ✅ Step 1: Check if the action is currently active
+    const existingCommand = await getDoc(activeCommandRef);
+    if (!existingCommand.exists()) {
+      console.log(`⚠️ No active command found for: ${action}, skipping stop.`);
+      return;
+    }
+
+    // ✅ Step 2: Prevent duplicate stop commands
+    const existingStopCommand = await getDoc(stopCommandRef);
+    if (existingStopCommand.exists()) {
+      console.log(`⚠️ Stop command already exists: ${stopCommandName}, avoiding duplicate.`);
+      return;
+    }
+
+    console.log(`🚀 Stopping command: ${action}`);
+
+    // ✅ Step 3: Store stop command in stop_commands
     await setDoc(stopCommandRef, {
-      action: action,
+      status: "stop",
+      action: stopCommandName,
       timestamp: new Date(),
     });
 
-    // ❌ Remove the active command from Firestore
-    await deleteDoc(doc(db, `users/${userId}/active_commands`, action));
+    console.log(`✅ Stop Command Sent: ${stopCommandName}`);
 
-    console.log(`✅ Stop Command Sent & Active Command Removed: ${action}`);
+    // ✅ Step 4: Remove the active command only after stop command is added
+    await deleteDoc(activeCommandRef);
+    console.log(`🗑️ Active Command Removed: ${action}`);
+
   } catch (error) {
     console.error("❌ Error sending stop command:", error);
   }
