@@ -76,14 +76,18 @@ export default function DeviceDetailsScreen({ navigation, route }) {
         {/* Device Information */}
         <View style={styles.detailsContainer}>
           <View style={styles.labelContainer}>
-            
-            
+            <View style={styles.line} />
+            <Text style={styles.sectionTitle}>Device Information</Text>
           </View>
 
           {/* Read-Only Device Name */}
-          
-
-          <Text style={styles.specsTitle}>{name}</Text> 
+          <TextInput
+            style={[styles.input, styles.disabledInput]}
+            value={name}
+            editable={false}
+            placeholder="Device Name"
+            placeholderTextColor="#888"
+          />
 
           {/* Button to Edit WiFi Details */}
           <TouchableOpacity style={styles.wifiButton} onPress={() => setModalVisible(true)}>
@@ -225,21 +229,39 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
-  specsContainer: {
-    marginTop: 15,
-    padding: 15,
-    backgroundColor: COLORS.white,
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalContainer: {
+    width: '90%',
+    backgroundColor: 'white',
+    padding: 20,
     borderRadius: 10,
-    elevation: 3,
   },
-  specsTitle: {
-    fontSize: 20, // 🔥 Larger Font Size
+  modalTitle: {
+    fontSize: 22,
     fontWeight: 'bold',
-    marginBottom: 5,
+    marginBottom: 15,
   },
-  specsText: {
-    fontSize: 18, // 🔥 Larger Font Size
-    color: COLORS.grey,
-    marginBottom: 5,
+  saveButton: {
+    backgroundColor: COLORS.green,
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 10,
+    alignItems: 'center',
+  },
+  saveButtonText: {
+    color: COLORS.white,
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  cancelButtonText: {
+    fontSize: 18,
+    color: 'red',
+    textAlign: 'center',
+    marginTop: 10,
   },
 });
