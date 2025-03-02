@@ -29,6 +29,9 @@ export default function DeviceScreen() {
   
     const userDevicesRef = collection(db, 'users', userId, 'devices');
     
+    console.log('DeviceScreen: User ID:', userId);
+    
+    
     // Properly request camera permissions
     (async () => {
       const { status } = await Camera.requestCameraPermissionsAsync();
@@ -38,13 +41,12 @@ export default function DeviceScreen() {
     // Firestore real-time listener
     const unsubscribe = onSnapshot(userDevicesRef, (querySnapshot) => {
       const updatedDevices = querySnapshot.docs.map(doc => ({
-        docId: doc.id, // Firestore document ID
+        id: doc.id,
         ...doc.data()
       }));
       
       setDevices(updatedDevices);
     });
-    
   
     return () => unsubscribe(); // Cleanup listener on unmount
   }, [userId]);
@@ -110,11 +112,13 @@ export default function DeviceScreen() {
 
   // Remove a device
   const removeDevice = async (id, name) => {
+    
     if (!userId) return;
   
     try {
       const sanitizedName = name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
       const uniqueDocId = `${id}_${sanitizedName}`;
+      console.log('Removing device:', uniqueDocId);
   
       const deviceDocRef = doc(db, 'users', userId, 'devices', uniqueDocId);
       await deleteDoc(deviceDocRef);
@@ -130,16 +134,24 @@ export default function DeviceScreen() {
   // Handle QR Code Scan
 
   const handleQRCodeScan = async ({ data }) => {
-    // First check if we're already processing a QR code
     if (scanned || processingQR) return;
-    
-    // Immediately set both flags to prevent additional processing
+  
     setScanned(true);
     setProcessingQR(true);
-    
+  
     try {
       console.log('Processing QR code data:', data);
-      const scannedData = JSON.parse(data);
+      let scannedData;
+      
+      try {
+        scannedData = JSON.parse(data);
+      } catch (e) {
+        console.error('Failed to parse QR data:', e);
+        Alert.alert('Invalid QR Code', 'The scanned QR code contains invalid JSON data.');
+        setProcessingQR(false);
+        setScanned(false);
+        return;
+      }
   
       if (!scannedData.id || !scannedData.name || !scannedData.type) {
         Alert.alert('Invalid QR Code', 'The scanned QR code does not contain valid device information.');
@@ -163,6 +175,7 @@ export default function DeviceScreen() {
         }
       }
   
+      // Create the device object with explicitly set WiFi credentials
       const newDevice = {
         id: scannedData.id,
         name: scannedData.name,
@@ -174,27 +187,30 @@ export default function DeviceScreen() {
         power: scannedData.power || 'Unknown',
         img: scannedData.imageUrl || null,
         dateAdded: new Date().toISOString(),
-        wifiPassword:'',
-        ssid:'',
+        // Always set these fields explicitly, regardless of QR content
+        wifiSSID: "DEFAULT_SSID",  
+        wifiPassword: "DEFAULT_PASSWORD" 
       };
   
-      // Add to Firestore
+      console.log('📝 Writing device to Firestore with WiFi credentials:', 
+        newDevice.wifiSSID, newDevice.wifiPassword);
+  
       if (userId) {
         const userDevicesRef = collection(db, 'users', userId, 'devices');
+        
+        // Option 1: Use setDoc with a specific document ID
         const deviceDocRef = doc(userDevicesRef, uniqueDocId);
-        await setDoc(deviceDocRef, newDevice, { merge: true });
-        console.log('Scanned device added to Firestore with ID:', uniqueDocId);
+        await setDoc(deviceDocRef, newDevice);
+        
+        console.log('✅ Scanned device added to Firestore with ID:', uniqueDocId);
       }
   
-      // No Alert here - we'll show success in the UI instead
-      
     } catch (error) {
       Alert.alert('Error', 'Failed to process QR code.');
       console.error('QR Scan Error:', error);
-      setProcessingQR(false);
-      setScanned(false);
     }
   };
+
   
 
 
@@ -215,13 +231,10 @@ export default function DeviceScreen() {
       
 
       <TouchableOpacity style={styles.scanButton} onPress={() => setIsScanning(true)}>
-        <Text style={styles.scanButtonText}>Add device</Text>
+        <Text style={styles.scanButtonText}>Add Device</Text>
       </TouchableOpacity>
 
-      {/* QR Scanner Modal */}
-      {/* QR Scanner Modal */}
       
-     
 <Modal 
   visible={isScanning} 
   animationType="slide"
@@ -274,26 +287,22 @@ export default function DeviceScreen() {
 </Modal>
 
 
-<FlatList
-  data={devices}
-  keyExtractor={(item, index) => `${item.docId}-${index}`} // Use Firestore Doc ID
-  renderItem={({ item }) => (
-    <TouchableOpacity onPress={() => {
-      console.log(`Firestore Doc ID: ${item.docId}`); // Now correctly logs Firestore doc ID
-      navigation.navigate('DeviceDetail', { device: item });
-    }}>
-      <View style={styles.deviceItem}>
-        <Icon name={item.icon || 'device-thermostat'} size={30} color={COLORS.green} style={styles.deviceIcon} />
-        <Text style={styles.deviceText}>{item.name}</Text>
-        <TouchableOpacity onPress={() => removeDevice(item.docId, item.name)}>
-          <Text style={styles.deleteText}>Remove</Text>
-        </TouchableOpacity>
-      </View>
-    </TouchableOpacity>
-  )}
-/>
+      <FlatList
+        data={devices}
+        keyExtractor={(item, index) => `${item.id}-${index}`}
+        renderItem={({ item }) => (
+          <TouchableOpacity onPress={() => navigation.navigate('DeviceDetail', { device: item })}>
+            <View style={styles.deviceItem}>
+              <Icon name={item.icon || 'device-thermostat'} size={30} color={COLORS.green} style={styles.deviceIcon} />
+              <Text style={styles.deviceText}>{item.name}</Text>
+              <TouchableOpacity onPress={() => removeDevice(item.id, item.name)}>
+                <Text style={styles.deleteText}>Remove</Text>
+              </TouchableOpacity>
 
-
+            </View>
+          </TouchableOpacity>
+        )}
+      />
     </View>
   );
 }
