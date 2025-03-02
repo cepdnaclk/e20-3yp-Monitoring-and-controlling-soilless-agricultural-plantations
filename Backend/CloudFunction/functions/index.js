@@ -1,70 +1,103 @@
-/**
- * Import function triggers from their respective submodules:
- *
- * const {onCall} = require("firebase-functions/v2/https");
- * const {onDocumentWritten} = require("firebase-functions/v2/firestore");
- *
- * See a full list of supported triggers at https://firebase.google.com/docs/functions
- */
-
-const functions = require("firebase-functions");
+/* eslint-disable no-console */
+const {onSchedule} = require("firebase-functions/v2/scheduler");
+const {onDocumentUpdated} = require("firebase-functions/v2/firestore");
+const {setGlobalOptions} = require("firebase-functions/v2/options");
+const admin = require("firebase-admin");
 const mqtt = require("mqtt");
-const logger = require("firebase-functions/logger");
-const {initializeApp} = require("firebase-admin/app");
-const {getFirestore} = require("firebase-admin/firestore");
+
+// Set global options
+setGlobalOptions({region: "us-central1"});
 
 // Initialize Firebase Admin SDK
-initializeApp();
-const db = getFirestore();
+admin.initializeApp();
+const db = admin.firestore();
 
-/**
- * Cloud Function to listen to MQTT messages and save to Firestore
- * @param {Object} req - The HTTP request
- * @param {Object} res - The HTTP response
- */
-exports.mqttToFirestore = functions.https.onRequest(async (req, res) => {
-  const MQTT_BROKER = "mqtt://broker.emqx.io"; // Change if necessary
-  const MQTT_TOPIC = "tharusha/data";
+// MQTT Broker Configuration
+const mqttOptions = {
+  host: "23162742be094f829a5b3f6f29eb5dd6.s1.eu.hivemq.cloud",
+  port: 8883,
+  username: "Tharusha",
+  password: "Tharusha2001",
+  protocol: "mqtts",
+};
 
-  logger.info("🚀 Starting MQTT Client...");
-  const client = mqtt.connect(MQTT_BROKER);
+// MQTT Client Connection
+const mqttClient = mqtt.connect(mqttOptions);
 
-  client.on("connect", () => {
-    logger.info("✅ Connected to MQTT Broker");
-    client.subscribe(MQTT_TOPIC, (err) => {
-      if (!err) {
-        logger.info(`📡 Subscribed to topic: ${MQTT_TOPIC}`);
-      } else {
-        logger.error("❌ Subscription error:", err);
-      }
-    });
-  });
+mqttClient.on("connect", () => {
+  console.log("✅ Connected to MQTT Broker");
 
-  client.on("error", (err) => {
-    logger.error("❌ MQTT Connection Error:", err);
-  });
-
-  client.on("message", async (topic, message) => {
-    logger.info(`📩 Message received on ${topic}: ${message.toString()}`);
-    try {
-      const data = JSON.parse(message.toString());
-
-      // Save to Firestore
-      const docRef = await db.collection("sensorData").add(data);
-      logger.info(`✅ Data saved to Firestore with ID: ${docRef.id}`);
-    } catch (error) {
-      logger.error("❌ Invalid JSON data:", error);
+  // Subscribe to sensor topic
+  mqttClient.subscribe("test/sensor", (err) => {
+    if (!err) {
+      console.log("✅ Subscribed to test/sensor");
+    } else {
+      console.error("❌ Subscription error:", err);
     }
   });
-
-  res.send("MQTT listener started successfully with Firestore!");
 });
 
+// Handle incoming MQTT messages and store them in Firestore
+mqttClient.on("message", async (topic, message) => {
+  try {
+    if (topic === "test/sensor") {
+      const data = JSON.parse(message.toString());
 
-// Create and deploy your first functions
-// https://firebase.google.com/docs/functions/get-started
+      const sensorData = {
+        temperature: data.temperature,
+        humidity: data.humidity,
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      };
 
-// exports.helloWorld = onRequest((request, response) => {
-//   logger.info("Hello logs!", {structuredData: true});
-//   response.send("Hello from Firebase!");
-// });
+      await db.collection("sensorData").add(sensorData);
+      console.log("✅ Data stored in Firestore:", sensorData);
+    }
+  } catch (error) {
+    console.error("❌ Error storing data:", error);
+  }
+});
+
+// Cloud Function to Keep MQTT Connection Alive
+exports.mqttToFirestore = onSchedule("every 1 minutes", async () => {
+  console.log("🔄 MQTT Listener is running...");
+});
+
+// Cloud Function to Notify ESP32 on Firestore Data Change
+exports.notifyESP32OnDataChange = onDocumentUpdated("sensorData/{docId}",
+    async (event) => {
+      try {
+        const beforeData = event.data.before.data();
+        const afterData = event.data.after.data();
+
+        if (!beforeData || !afterData) {
+          console.log("⚠️ Missing data, skipping update.");
+          return;
+        }
+
+        // Find the changed fields
+        const changedFields = {};
+        for (const key in afterData) {
+          if (JSON.stringify(beforeData[key]) !==
+          JSON.stringify(afterData[key])) {
+            changedFields[key] = afterData[key];
+          }
+        }
+
+        if (JSON.stringify(beforeData) !== JSON.stringify(afterData)) {
+          console.log("🔄 Data changed, notifying ESP32...");
+
+          const message = JSON.stringify(changedFields);
+          mqttClient.publish("test/topic", message, {}, (err) => {
+            if (err) {
+              console.error("❌ MQTT Publish Error:", err);
+            } else {
+              console.log("✅ Update sent to ESP32:", message);
+            }
+          });
+        } else {
+          console.log("⚠️ No significant changes detected.");
+        }
+      } catch (error) {
+        console.error("❌ Error in Firestore trigger:", error);
+      }
+    });
