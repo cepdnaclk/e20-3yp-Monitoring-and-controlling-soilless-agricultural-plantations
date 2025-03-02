@@ -16,8 +16,8 @@ import PhLevelScreen from './app/screens/PhLevelScreen';
 import EcLevelScreen from './app/screens/EcLevelScreen';
 
 import LandingScreen from './app/screens/LandingScreen';
-import PlantationsScreen from './app/screens/PlantationsScreen';
-import DetailsScreen from './app/compononts/PlantDetails';
+//import PlantationsScreen from './app/screens/PlantationsScreen';
+//import DetailsScreen from './app/compononts/PlantDetails';
 import DeviceScreen from './app/screens/DeviceScreen';
 import DeviceDetailsScreen from './app/compononts/DeviceDetail';
 
@@ -69,11 +69,11 @@ export default function App() {
           options={{ headerShown: false }} 
         />
 
-        <Stack.Screen 
+        {/* <Stack.Screen 
           name="Details" 
           component={DetailsScreen} 
           options={{ headerShown: false }} 
-        />
+        /> */}
 
         <Stack.Screen 
           name="Home" 

@@ -4,161 +4,143 @@ import {
   SafeAreaView,
   Text,
   StyleSheet,
-  FlatList,
-  Image,
-  Dimensions,
   TextInput,
+  FlatList,
+  ActivityIndicator,
   TouchableOpacity,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import COLORS from '../config/colors';
-import plantsData from '../config/plants';
+import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
+import { db } from '../firebaseConfig'; // Firestore reference
 
-const width = Dimensions.get('window').width / 2 - 30;
+const LandingScreen = () => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [plantations, setPlantations] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-const LandingScreen = ({ navigation }) => {
-  const [categoryIndex, setCategoryIndex] = useState(0);
-  const [plants, setPlants] = useState(plantsData);
-  const [newPlantName, setNewPlantName] = useState('');
+  // 🔥 Fetch a plant document by its ID (document name)
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) {
+      setError('Enter a plant name to search.');
+      return;
+    }
 
-  const categories = ['LEAFY GREENS', 'HERBS', 'FRUITS', 'OTHERS'];
+    setLoading(true);
+    setError('');
 
-  const addPlantation = () => {
-    if (newPlantName.trim() === '') return;
-    const newPlant = {
-      id: plants.length + 1,
-      name: newPlantName,
-      like: false,
-      img: require('../plants/plant1.png'), // Placeholder image
-      about: `A new plantation named ${newPlantName}.`,
-    };
-    setPlants([...plants, newPlant]);
-    setNewPlantName('');
+    try {
+      const docRef = doc(db, 'plants', searchQuery.trim()); // 🔥 Fetch by document ID
+      const docSnap = await getDoc(docRef);
+
+      if (!docSnap.exists()) {
+        setError(`No plantation found for "${searchQuery}".`);
+        setPlantations([]);
+      } else {
+        const plantData = docSnap.data();
+
+        // Fetch data from subcollections
+        const ecData = await fetchSubcollectionData(docRef, 'ec');
+        const phData = await fetchSubcollectionData(docRef, 'ph');
+        const temperatureData = await fetchSubcollectionData(docRef, 'temperature');
+        const lightIntensityData = await fetchSubcollectionData(docRef, 'light_intensity');
+
+        // Merging subcollection data into the plant document
+        setPlantations([{
+          id: docSnap.id,
+          ...plantData,
+          ec: ecData,
+          ph: phData,
+          temperature: temperatureData,
+          light_intensity: lightIntensityData,
+        }]);
+      }
+    } catch (error) {
+      console.error('❌ Firestore Error:', error);
+      setError('Error fetching data. Please try again.');
+    }
+
+    setLoading(false);
   };
 
-  const CategoryList = () => {
-    return (
-      <View style={styles.categoryContainer}>
-        {categories.map((item, index) => (
-          <TouchableOpacity
-            key={index}
-            activeOpacity={0.8}
-            onPress={() => setCategoryIndex(index)}
-          >
-            <Text
-              style={[
-                styles.categoryText,
-                categoryIndex === index && styles.categoryTextSelected,
-              ]}
-            >
-              {item}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-    );
-  };
+  // Function to fetch data from a subcollection
+  const fetchSubcollectionData = async (docRef, subcollectionName) => {
+    try {
+      const subCollectionRef = collection(docRef, subcollectionName); // Reference to the subcollection
+      const subCollectionSnap = await getDocs(subCollectionRef);
 
-  const Card = ({ plant }) => {
-    return (
-      <TouchableOpacity
-        activeOpacity={0.8}
-        onPress={() => navigation.navigate('Details', plant)}
-      >
-        <View style={styles.card}>
-          <View style={{ alignItems: 'flex-end' }}>
-            
-          </View>
-
-          <View style={{ height: 100, alignItems: 'center' }}>
-            <Image source={plant.img} style={{ flex: 1, resizeMode: 'contain' }} />
-          </View>
-
-          <Text style={{ fontWeight: 'bold', fontSize: 17, marginTop: 10 }}>
-            {plant.name}
-          </Text>
-        </View>
-      </TouchableOpacity>
-    );
+      // Return the data from the subcollection, mapping each document's data
+      return subCollectionSnap.docs.map(doc => doc.data());
+    } catch (error) {
+      console.error(`❌ Error fetching subcollection ${subcollectionName}:`, error);
+      return [];
+    }
   };
 
   return (
-    <SafeAreaView
-      style={{ flex: 1, paddingHorizontal: 20, backgroundColor: COLORS.white }}
-    >
+    <SafeAreaView style={{ flex: 1, paddingHorizontal: 20, backgroundColor: COLORS.white }}>
       <View style={styles.header}>
-        <View>
-          <Text style={{ fontSize: 25, fontWeight: 'bold' }}>Welcome to</Text>
-          <Text style={{ fontSize: 38, color: COLORS.green, fontWeight: 'bold' }}>
-            Plantations
-          </Text>
-        </View>
+        <Text style={styles.title}>Plantations</Text>
       </View>
 
-      <View style={{ marginTop: 30, flexDirection: 'row' }}>
+      {/* Search Bar */}
+      <View style={styles.searchWrapper}>
         <View style={styles.searchContainer}>
-          <Icon name="search" size={25} style={{ marginLeft: 20 }} />
-          <TextInput placeholder="Search" style={styles.input} />
+          <Icon name="search" size={25} style={styles.searchIcon} />
+          <TextInput 
+            placeholder="Search for a plant" 
+            style={styles.input} 
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoCapitalize="words"
+          />
         </View>
-        <View style={styles.sortBtn}>
-          <Icon name="sort" size={30} color={COLORS.white} />
-        </View>
-      </View>
-
-      {/* Add Plantation Input */}
-      <View style={styles.addPlantContainer}>
-        <TextInput
-          placeholder="Enter plantation name"
-          value={newPlantName}
-          onChangeText={setNewPlantName}
-          style={styles.addPlantInput}
-        />
-        <TouchableOpacity style={styles.addPlantButton} onPress={addPlantation}>
-          <Text style={styles.addPlantButtonText}>Add</Text>
+        <TouchableOpacity onPress={handleSearch} style={styles.addButton}>
+          <Icon name="add" size={30} color={COLORS.white} />
         </TouchableOpacity>
       </View>
 
-      <CategoryList />
-      <FlatList
-        columnWrapperStyle={{ justifyContent: 'space-between' }}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ marginTop: 10, paddingBottom: 50 }}
-        numColumns={2}
-        data={plants}
-        renderItem={({ item }) => <Card plant={item} />}
-      />
+      {/* Error Message */}
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+      {/* Show Loading */}
+      {loading ? (
+        <ActivityIndicator size="large" color={COLORS.green} style={{ marginTop: 20 }} />
+      ) : (
+        <FlatList
+          data={plantations}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <View style={styles.listItem}>
+              <Text style={styles.listText}>🌱 {item.id}</Text>
+              {item.type && <Text style={styles.listSubText}>Type: {item.type}</Text>}
+
+              {/* Displaying subcollection data */}
+              {item.ec && item.ec.length > 0 && (
+                <Text style={styles.listSubText}>EC: {item.ec.map((data, idx) => `Value ${idx + 1}: ${data.value}`).join(', ')}</Text>
+              )}
+              {item.ph && item.ph.length > 0 && (
+                <Text style={styles.listSubText}>pH: {item.ph.map((data, idx) => `Value ${idx + 1}: ${data.value}`).join(', ')}</Text>
+              )}
+              {item.temperature && item.temperature.length > 0 && (
+                <Text style={styles.listSubText}>Temperature: {item.temperature.map((data, idx) => `Value ${idx + 1}: ${data.value}`).join(', ')}</Text>
+              )}
+              {item.light_intensity && item.light_intensity.length > 0 && (
+                <Text style={styles.listSubText}>Light Intensity: {item.light_intensity.map((data, idx) => `Value ${idx + 1}: ${data.value}`).join(', ')}</Text>
+              )}
+            </View>
+          )}
+        />
+      )}
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  categoryContainer: {
-    flexDirection: 'row',
-    marginTop: 30,
-    marginBottom: 20,
-    justifyContent: 'space-between',
-  },
-  categoryText: { fontSize: 16, color: 'grey', fontWeight: 'bold' },
-  categoryTextSelected: {
-    color: COLORS.green,
-    paddingBottom: 5,
-    borderBottomWidth: 2,
-    borderColor: COLORS.green,
-  },
-  card: {
-    height: 220,
-    backgroundColor: COLORS.light,
-    width,
-    marginHorizontal: 2,
-    borderRadius: 10,
-    marginBottom: 20,
-    padding: 10,
-  },
-  header: {
-    marginTop: 30,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
+  header: { marginTop: 30 },
+  title: { fontSize: 38, color: COLORS.green, fontWeight: 'bold' },
+  searchWrapper: { marginTop: 30, flexDirection: 'row' },
   searchContainer: {
     height: 50,
     backgroundColor: COLORS.light,
@@ -167,13 +149,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  input: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    flex: 1,
-    color: COLORS.dark,
-  },
-  sortBtn: {
+  searchIcon: { marginLeft: 20 },
+  input: { fontSize: 18, fontWeight: 'bold', flex: 1, color: COLORS.dark },
+  addButton: {
     marginLeft: 10,
     height: 50,
     width: 50,
@@ -182,33 +160,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  addPlantContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 20,
+  errorText: { color: 'red', marginTop: 10, textAlign: 'center' },
+  listItem: {
+    padding: 15,
+    marginVertical: 5,
+    backgroundColor: COLORS.light,
+    borderRadius: 8,
   },
-  addPlantInput: {
-    flex: 1,
-    height: 45,
-    borderWidth: 1,
-    borderColor: COLORS.green,
-    borderRadius: 10,
-    paddingLeft: 10,
-  },
-  addPlantButton: {
-    marginLeft: 10,
-    height: 45,
-    paddingHorizontal: 15,
-    backgroundColor: COLORS.green,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 10,
-  },
-  addPlantButtonText: {
-    color: COLORS.white,
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
+  listText: { fontSize: 18, fontWeight: 'bold' },
+  listSubText: { fontSize: 14, color: COLORS.darkGray },
 });
 
 export default LandingScreen;
