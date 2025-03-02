@@ -2,38 +2,72 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, Alert, Modal } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { useNavigation } from '@react-navigation/native';
-import { Camera, CameraView } from 'expo-camera'; // ✅ Correct Import
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { Camera, CameraView } from 'expo-camera';
+import { getFirestore, collection, doc, setDoc, addDoc,getDocs,getDoc, deleteDoc,onSnapshot  } from 'firebase/firestore';
 import COLORS from '../config/colors';
 import devicesData from '../config/devices';
+
 
 export default function DeviceScreen() {
   const [deviceName, setDeviceName] = useState('');
   const [devices, setDevices] = useState([]);
   const [hasPermission, setHasPermission] = useState(null);
   const [isScanning, setIsScanning] = useState(false);
-  const [scanned, setScanned] = useState(false); // New state to prevent multiple scans
+  const [scanned, setScanned] = useState(false);
+  const [processingQR, setProcessingQR] = useState(false);
+  
   const navigation = useNavigation();
+  const route = useRoute();
+  const userId = route.params?.userId; // Get userId from route params
+  const db = getFirestore();
+  
+  
 
   useEffect(() => {
-    loadDevices();
-    requestCameraPermission();
-  }, []);
+    if (!userId) return;
+  
+    const userDevicesRef = collection(db, 'users', userId, 'devices');
+    
+    // Properly request camera permissions
+    (async () => {
+      const { status } = await Camera.requestCameraPermissionsAsync();
+      setHasPermission(status === 'granted');
+    })();
+  
+    // Firestore real-time listener
+    const unsubscribe = onSnapshot(userDevicesRef, (querySnapshot) => {
+      const updatedDevices = querySnapshot.docs.map(doc => ({
+        docId: doc.id, // Firestore document ID
+        ...doc.data()
+      }));
+      
+      setDevices(updatedDevices);
+    });
+    
+  
+    return () => unsubscribe(); // Cleanup listener on unmount
+  }, [userId]);
+
 
   // Load devices from AsyncStorage
   const loadDevices = async () => {
+    if (!userId) return;
+  
     try {
-      const storedDevices = await AsyncStorage.getItem('devices');
-      if (storedDevices) {
-        setDevices(JSON.parse(storedDevices));
-      } else {
-        setDevices([]); // or setDevices([]) to start with an empty list
-      }
+      const userDevicesRef = collection(db, 'users', userId, 'devices');
+      const querySnapshot = await getDocs(userDevicesRef);
+      
+      const loadedDevices = querySnapshot.docs.map(doc => ({
+        id: doc.id,  // Firestore document ID
+        ...doc.data()
+      }));
+  
+      setDevices(loadedDevices);
     } catch (error) {
-      console.log('Error loading devices:', error);
+      console.log('Error fetching devices from Firestore:', error);
     }
   };
-
   // Request Camera Permissions
   const requestCameraPermission = async () => {
     const { status } = await Camera.requestCameraPermissionsAsync();
@@ -59,30 +93,76 @@ export default function DeviceScreen() {
     const updatedDevices = [...devices, newDevice];
     setDevices(updatedDevices);
     await AsyncStorage.setItem('devices', JSON.stringify(updatedDevices));
+    
+    // Add to Firestore if userId is available
+    if (userId) {
+      try {
+        const userDevicesRef = collection(db, 'users', userId, 'devices');
+        await addDoc(userDevicesRef, newDevice);
+        console.log('Device added to Firestore');
+      } catch (error) {
+        console.error('Error adding device to Firestore:', error);
+      }
+    }
+    
     setDeviceName('');
   };
 
   // Remove a device
-  const removeDevice = async (id) => {
-    const updatedDevices = devices.filter(device => device.id !== id);
-    setDevices(updatedDevices);
-    await AsyncStorage.setItem('devices', JSON.stringify(updatedDevices));
+  const removeDevice = async (id, name) => {
+    if (!userId) return;
+  
+    try {
+      const sanitizedName = name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+      const uniqueDocId = `${id}_${sanitizedName}`;
+  
+      const deviceDocRef = doc(db, 'users', userId, 'devices', uniqueDocId);
+      await deleteDoc(deviceDocRef);
+  
+      Alert.alert('Success', 'Device removed successfully.');
+    } catch (error) {
+      console.error('Error removing device from Firestore:', error);
+      Alert.alert('Error', 'Failed to remove device.');
+    }
   };
-
+  
+  
   // Handle QR Code Scan
+
   const handleQRCodeScan = async ({ data }) => {
-    if (scanned) return; // Prevent multiple scans
+    // First check if we're already processing a QR code
+    if (scanned || processingQR) return;
+    
+    // Immediately set both flags to prevent additional processing
     setScanned(true);
+    setProcessingQR(true);
     
     try {
-      const scannedData = JSON.parse(data); // Extract scanned QR code data
-
+      console.log('Processing QR code data:', data);
+      const scannedData = JSON.parse(data);
+  
       if (!scannedData.id || !scannedData.name || !scannedData.type) {
         Alert.alert('Invalid QR Code', 'The scanned QR code does not contain valid device information.');
-        setScanned(false); // Reset flag so user can try again
+        setProcessingQR(false);
+        setScanned(false);
         return;
       }
-
+  
+      const sanitizedName = scannedData.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+      const uniqueDocId = `${scannedData.id}_${sanitizedName}`;
+  
+      if (userId) {
+        const deviceDocRef = doc(db, 'users', userId, 'devices', uniqueDocId);
+        const existingDevice = await getDoc(deviceDocRef);
+  
+        if (existingDevice.exists()) {
+          Alert.alert('Duplicate Device', 'This device already exists.');
+          setProcessingQR(false);
+          setScanned(false);
+          return;
+        }
+      }
+  
       const newDevice = {
         id: scannedData.id,
         name: scannedData.name,
@@ -93,34 +173,30 @@ export default function DeviceScreen() {
         description: scannedData.description || 'No description available.',
         power: scannedData.power || 'Unknown',
         img: scannedData.imageUrl || null,
+        dateAdded: new Date().toISOString(),
+        wifiPassword:'',
+        ssid:'',
       };
-
-      const updatedDevices = [...devices, newDevice];
-      setDevices(updatedDevices);
-      await AsyncStorage.setItem('devices', JSON.stringify(updatedDevices));
-
-      Alert.alert(
-        'Success',
-        `${scannedData.name} added successfully!`,
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              setIsScanning(false); // Close the modal
-              setScanned(false);    // Reset the scanned flag for future scans
-              // If you want to navigate back to a previous screen, uncomment the next line:
-              // navigation.goBack();
-            }
-          }
-        ]
-      );
+  
+      // Add to Firestore
+      if (userId) {
+        const userDevicesRef = collection(db, 'users', userId, 'devices');
+        const deviceDocRef = doc(userDevicesRef, uniqueDocId);
+        await setDoc(deviceDocRef, newDevice, { merge: true });
+        console.log('Scanned device added to Firestore with ID:', uniqueDocId);
+      }
+  
+      // No Alert here - we'll show success in the UI instead
       
     } catch (error) {
       Alert.alert('Error', 'Failed to process QR code.');
       console.error('QR Scan Error:', error);
-      setScanned(false); // Reset flag in case of error
+      setProcessingQR(false);
+      setScanned(false);
     }
   };
+  
+
 
   return (
     <View style={styles.container}>
@@ -136,51 +212,88 @@ export default function DeviceScreen() {
         onChangeText={setDeviceName}
       />
 
-      <TouchableOpacity style={styles.addButton} onPress={addDevice}>
-        <Text style={styles.addButtonText}>Add Device</Text>
-      </TouchableOpacity>
+      
 
       <TouchableOpacity style={styles.scanButton} onPress={() => setIsScanning(true)}>
-        <Text style={styles.scanButtonText}>Scan QR Code</Text>
+        <Text style={styles.scanButtonText}>Add device</Text>
       </TouchableOpacity>
 
       {/* QR Scanner Modal */}
-      <Modal visible={isScanning} animationType="slide">
-        <View style={styles.fullScreen}>
-          {hasPermission === null ? (
-            <Text>Requesting camera permission...</Text>
-          ) : hasPermission === false ? (
-            <Text>No access to camera</Text>
-          ) : (
-            <CameraView
-              style={styles.cameraView}
-              onBarcodeScanned={handleQRCodeScan}
-              barcodeScannerSettings={{
-                barcodeTypes: ['qr'],
-              }}
-            />
-          )}
-          <TouchableOpacity style={styles.cancelButton} onPress={() => { setIsScanning(false); setScanned(false); }}>
-            <Text style={styles.cancelButtonText}>Cancel</Text>
-          </TouchableOpacity>
-        </View>
-      </Modal>
-
-      <FlatList
-        data={devices}
-        keyExtractor={(item, index) => `${item.id}-${index}`}
-        renderItem={({ item }) => (
-          <TouchableOpacity onPress={() => navigation.navigate('DeviceDetail', { device: item })}>
-            <View style={styles.deviceItem}>
-              <Icon name={item.icon || 'device-thermostat'} size={30} color={COLORS.green} style={styles.deviceIcon} />
-              <Text style={styles.deviceText}>{item.name}</Text>
-              <TouchableOpacity onPress={() => removeDevice(item.id)}>
-                <Text style={styles.deleteText}>Remove</Text>
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-        )}
+      {/* QR Scanner Modal */}
+      
+     
+<Modal 
+  visible={isScanning} 
+  animationType="slide"
+  onRequestClose={() => {
+    setIsScanning(false);
+    setScanned(false);
+    setProcessingQR(false);
+  }}
+>
+  <View style={styles.fullScreen}>
+    {hasPermission === null ? (
+      <Text>Requesting camera permission...</Text>
+    ) : hasPermission === false ? (
+      <Text>No access to camera</Text>
+    ) : processingQR ? (
+      // Show the success screen with Scan Another button when processing is complete
+      <View style={styles.successScreen}>
+        <Text style={styles.successText}>Device Added Successfully!</Text>
+        <TouchableOpacity 
+          style={styles.scanAgainButton} 
+          onPress={() => {
+            setScanned(false);
+            setProcessingQR(false);
+          }}
+        >
+          <Text style={styles.scanAgainButtonText}>Add another device</Text>
+        </TouchableOpacity>
+      </View>
+    ) : (
+      // Show camera when not processing
+      <CameraView
+        style={styles.cameraView}
+        onBarcodeScanned={scanned ? undefined : handleQRCodeScan}
+        barcodeScannerSettings={{
+          barcodeTypes: ['qr'],
+        }}
       />
+    )}
+    <TouchableOpacity 
+      style={styles.cancelButton} 
+      onPress={() => {
+        setIsScanning(false);
+        setScanned(false);
+        setProcessingQR(false);
+      }}
+    >
+      <Text style={styles.cancelButtonText}>Cancel</Text>
+    </TouchableOpacity>
+  </View>
+</Modal>
+
+
+<FlatList
+  data={devices}
+  keyExtractor={(item, index) => `${item.docId}-${index}`} // Use Firestore Doc ID
+  renderItem={({ item }) => (
+    <TouchableOpacity onPress={() => {
+      console.log(`Firestore Doc ID: ${item.docId}`); // Now correctly logs Firestore doc ID
+      navigation.navigate('DeviceDetail', { device: item });
+    }}>
+      <View style={styles.deviceItem}>
+        <Icon name={item.icon || 'device-thermostat'} size={30} color={COLORS.green} style={styles.deviceIcon} />
+        <Text style={styles.deviceText}>{item.name}</Text>
+        <TouchableOpacity onPress={() => removeDevice(item.docId, item.name)}>
+          <Text style={styles.deleteText}>Remove</Text>
+        </TouchableOpacity>
+      </View>
+    </TouchableOpacity>
+  )}
+/>
+
+
     </View>
   );
 }
@@ -228,4 +341,31 @@ const styles = StyleSheet.create({
   },
   deviceText: { color: '#333', fontSize: 18 },
   deleteText: { color: 'red', fontSize: 16 },
+  successScreen: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#1E3837',
+    width: '100%',
+    padding: 20,
+  },
+  successText: {
+    color: 'white',
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 30,
+    textAlign: 'center',
+  },
+  scanAgainButton: {
+    backgroundColor: '#2D6A4F',
+    padding: 15,
+    borderRadius: 8,
+    width: '80%', 
+    alignItems: 'center',
+  },
+  scanAgainButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  }
 });

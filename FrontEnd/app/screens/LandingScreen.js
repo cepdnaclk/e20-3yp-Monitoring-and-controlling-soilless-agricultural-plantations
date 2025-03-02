@@ -14,21 +14,19 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import COLORS from '../config/colors';
 import plantsData from '../config/plants';
 
-const width = Dimensions.get('window').width / 2 - 30;
+const width = (Dimensions.get('window').width - 60) / 2; // ✅ Ensures items fit properly in 2-column layout
 
 const LandingScreen = ({ navigation }) => {
-  const [categoryIndex, setCategoryIndex] = useState(0);
   const [plants, setPlants] = useState(plantsData);
   const [newPlantName, setNewPlantName] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const categories = ['LEAFY GREENS', 'HERBS', 'FRUITS', 'OTHERS'];
-
+  // ✅ Function to add a new plant
   const addPlantation = () => {
     if (newPlantName.trim() === '') return;
     const newPlant = {
       id: plants.length + 1,
       name: newPlantName,
-      like: false,
       img: require('../plants/plant1.png'), // Placeholder image
       about: `A new plantation named ${newPlantName}.`,
     };
@@ -36,79 +34,57 @@ const LandingScreen = ({ navigation }) => {
     setNewPlantName('');
   };
 
-  const CategoryList = () => {
-    return (
-      <View style={styles.categoryContainer}>
-        {categories.map((item, index) => (
-          <TouchableOpacity
-            key={index}
-            activeOpacity={0.8}
-            onPress={() => setCategoryIndex(index)}
-          >
-            <Text
-              style={[
-                styles.categoryText,
-                categoryIndex === index && styles.categoryTextSelected,
-              ]}
-            >
-              {item}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-    );
-  };
+  // ✅ Function to filter plants based on search query
+  const filteredPlants = plants.filter((plant) =>
+    plant.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
+  // ✅ Proper touch handling by ensuring full width & height for each item
   const Card = ({ plant }) => {
     return (
       <TouchableOpacity
+        style={styles.cardContainer} // ✅ Ensures proper touch area
         activeOpacity={0.8}
         onPress={() => navigation.navigate('Details', plant)}
       >
         <View style={styles.card}>
-          <View style={{ alignItems: 'flex-end' }}>
-            
-          </View>
-
           <View style={{ height: 100, alignItems: 'center' }}>
             <Image source={plant.img} style={{ flex: 1, resizeMode: 'contain' }} />
           </View>
-
-          <Text style={{ fontWeight: 'bold', fontSize: 17, marginTop: 10 }}>
-            {plant.name}
-          </Text>
+          <Text style={styles.cardText}>{plant.name}</Text>
         </View>
       </TouchableOpacity>
     );
   };
 
   return (
-    <SafeAreaView
-      style={{ flex: 1, paddingHorizontal: 20, backgroundColor: COLORS.white }}
-    >
+    <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View>
-          <Text style={{ fontSize: 25, fontWeight: 'bold' }}>Welcome to</Text>
+          <Text style={{ fontSize: 25, fontWeight: 'bold' }}>Your</Text>
           <Text style={{ fontSize: 38, color: COLORS.green, fontWeight: 'bold' }}>
-            Plantations
+            Plants
           </Text>
         </View>
       </View>
 
-      <View style={{ marginTop: 30, flexDirection: 'row' }}>
+      {/* 🔍 Search Bar */}
+      <View style={styles.searchWrapper}>
         <View style={styles.searchContainer}>
           <Icon name="search" size={25} style={{ marginLeft: 20 }} />
-          <TextInput placeholder="Search" style={styles.input} />
-        </View>
-        <View style={styles.sortBtn}>
-          <Icon name="sort" size={30} color={COLORS.white} />
+          <TextInput
+            placeholder="Search plants..."
+            style={styles.input}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
         </View>
       </View>
 
-      {/* Add Plantation Input */}
+      {/* ➕ Add Plantation Input */}
       <View style={styles.addPlantContainer}>
         <TextInput
-          placeholder="Enter plantation name"
+          placeholder="Enter plant name"
           value={newPlantName}
           onChangeText={setNewPlantName}
           style={styles.addPlantInput}
@@ -118,13 +94,14 @@ const LandingScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      <CategoryList />
+      {/* 🌱 Display Plant List */}
       <FlatList
+        data={filteredPlants}
+        numColumns={2}
+        keyExtractor={(item) => item.id.toString()}
         columnWrapperStyle={{ justifyContent: 'space-between' }}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ marginTop: 10, paddingBottom: 50 }}
-        numColumns={2}
-        data={plants}
         renderItem={({ item }) => <Card plant={item} />}
       />
     </SafeAreaView>
@@ -132,56 +109,17 @@ const LandingScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  categoryContainer: {
-    flexDirection: 'row',
-    marginTop: 30,
-    marginBottom: 20,
-    justifyContent: 'space-between',
-  },
-  categoryText: { fontSize: 16, color: 'grey', fontWeight: 'bold' },
-  categoryTextSelected: {
-    color: COLORS.green,
-    paddingBottom: 5,
-    borderBottomWidth: 2,
-    borderColor: COLORS.green,
-  },
-  card: {
-    height: 220,
-    backgroundColor: COLORS.light,
-    width,
-    marginHorizontal: 2,
-    borderRadius: 10,
-    marginBottom: 20,
-    padding: 10,
-  },
-  header: {
-    marginTop: 30,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
+  container: { flex: 1, paddingHorizontal: 20, backgroundColor: COLORS.white },
+  header: { marginTop: 30 },
+  searchWrapper: { marginTop: 30 },
   searchContainer: {
     height: 50,
     backgroundColor: COLORS.light,
     borderRadius: 10,
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
   },
-  input: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    flex: 1,
-    color: COLORS.dark,
-  },
-  sortBtn: {
-    marginLeft: 10,
-    height: 50,
-    width: 50,
-    borderRadius: 10,
-    backgroundColor: COLORS.green,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  input: { fontSize: 18, fontWeight: 'bold', flex: 1, color: COLORS.dark },
   addPlantContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -204,10 +142,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 10,
   },
-  addPlantButtonText: {
-    color: COLORS.white,
+  addPlantButtonText: { color: COLORS.white, fontWeight: 'bold', fontSize: 16 },
+
+  // ✅ Fix: Ensures TouchableOpacity covers only the intended area
+  cardContainer: {
+    width, // ✅ Ensures each card has proper width
+    marginBottom: 20, // ✅ Prevents overlap with next row
+  },
+
+  // ✅ Fix: Ensures proper card size without extra touch area overlap
+  card: {
+    height: 220,
+    backgroundColor: COLORS.light,
+    width: '100%', // ✅ Uses full width of parent (cardContainer)
+    borderRadius: 10,
+    padding: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  cardText: {
     fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: 17,
+    marginTop: 10,
+    textAlign: 'center', // ✅ Ensures text is centered properly
   },
 });
 
