@@ -14,6 +14,7 @@ import TemperatureScreen from './app/screens/TemperatureScreen';
 import HumidityScreen from './app/screens/HumidityScreen';
 import PhLevelScreen from './app/screens/PhLevelScreen';
 import EcLevelScreen from './app/screens/EcLevelScreen';
+import LightScreen from './app/screens/LightScreen';
 
 import LandingScreen from './app/screens/LandingScreen';
 import PlantationsScreen from './app/screens/PlantationsScreen';
@@ -127,6 +128,12 @@ export default function App() {
           name="EcLevel" 
           component={EcLevelScreen} 
           options={{ title: 'EC Level' }} 
+        />
+
+        <Stack.Screen 
+          name="LightIntensity" 
+          component={LightScreen} 
+          options={{ title: 'Light Intensity' }} 
         />
 
       </Stack.Navigator>

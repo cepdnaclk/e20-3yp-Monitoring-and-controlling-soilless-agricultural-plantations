@@ -4,13 +4,16 @@ import { getFirestore } from "firebase/firestore";
 
 // Replace with your Firebase config
 const firebaseConfig = {
-    apiKey: "AIzaSyBz0QYUeCGFxZahN5uDvqJUY3bBTgxY570",
-    authDomain: "mytestapp-b58a4.firebaseapp.com",
-    projectId: "mytestapp-b58a4",
-    storageBucket: "mytestapp-b58a4.firebasestorage.app",
-    messagingSenderId: "701953680169",
-    appId: "1:701953680169:web:f4e3c66a97b931ddb3cd38"
+  apiKey: "AIzaSyB2zd48_6SepB3aq0BQTJaoTUpeqF3yNnE",
+  authDomain: "plant-pulse-bd615.firebaseapp.com",
+  databaseURL: "https://plant-pulse-bd615-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "plant-pulse-bd615",
+  storageBucket: "plant-pulse-bd615.firebasestorage.app",
+  messagingSenderId: "985853051668",
+  appId: "1:985853051668:web:31683335b4b49df372f801",
+  measurementId: "G-P6M4LCTN7C"
 };
+
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);

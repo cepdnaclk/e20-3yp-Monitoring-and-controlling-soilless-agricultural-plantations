@@ -29,8 +29,8 @@ export default function DashboardScreen({ navigation, route }) {
             temperature: data.temperature || 0,
             humidity: data.humidity || 0,
             pH: data.ph || 0,
-            EC: data.ec || 0,
-            soilMoisture: data.soil_moisture || 0,
+            EC: data.water_level || 0,
+            soilMoisture: data.light_intensity || 0,
             timestamp: data.timestamp?.toDate().toLocaleString() || "Unknown"
           };
         });
@@ -45,6 +45,7 @@ export default function DashboardScreen({ navigation, route }) {
             { data: fetchedData.map(d => d.pH), label: "pH Level" },
             { data: fetchedData.map(d => d.EC), label: "EC Level (mS/cm)" },
             { data: fetchedData.map(d => d.soilMoisture), label: "Soil Moisture (%)" },
+            { data: fetchedData.map(d => d.light_intensity), label: "Light Intensity(Lux)" }
           ],
         });
         setLoading(false);
@@ -70,9 +71,24 @@ export default function DashboardScreen({ navigation, route }) {
       case "pH":
         return value >= 5.5 && value <= 6.5 ? "green" : value < 8.0 || value > 7.0 ? "yellow" : "red";
       case "EC":
-        return value >= 1.2 && value <= 2.5 ? "green" : value < 1.0 || value > 3.0 ? "red" : "yellow";
+        if(value=="Normal"){
+          return "green";
+        }
+        else if(value=="critical"){
+          return "red";
+        }
+        else if(value=="Above Normal"){
+          return "orange";
+        }
+        else if(value=="below normal"){
+          return "yellow";
+        
+
+        }else{
+          return "blue";
+        }
       case "soilMoisture":
-        return value >= 60 && value <= 80 ? "green" : value < 50 || value > 90 ? "red" : "yellow";
+        return value >= 10000 ? "green" : value < 5000 ? "red" : "yellow";
       default:
         return "blue";
     }
@@ -107,11 +123,7 @@ export default function DashboardScreen({ navigation, route }) {
         label: "pH Level",
         color: (opacity = 1) => `rgba(75, 192, 192, ${opacity})`, // Teal
       },
-      {
-        data: chartData?.datasets[3]?.data || [],
-        label: "EC Level (mS/cm)",
-        color: (opacity = 1) => `rgba(255, 206, 86, ${opacity})`, // Yellow
-      },
+      
       {
         data: chartData?.datasets[4]?.data || [],
         label: "Soil Moisture (%)",
@@ -139,16 +151,30 @@ export default function DashboardScreen({ navigation, route }) {
       </View>
 
       {/* Cards Grid */}
+      
       <View style={styles.gridContainer}>
-        <Card style={styles.card} onPress={() => navigation.navigate('SoilMoisture', { userId })}>
+        {/* <Card style={styles.card} onPress={() => navigation.navigate('SoilMoisture', { userId })}>
           <Card.Content style={styles.cardContent}>
-            <Icon name="opacity" size={30} color={COLORS.green} />
-            <Text style={styles.cardTitle}>Soil Moisture</Text>
+            <Icon name="wb-sunny" size={30} color={COLORS.green} />
+            <Text style={styles.cardTitle}>Light Intensity</Text>
             <Text style={styles.cardText}>
-              {getLatestReading(4)}% <View style={[styles.statusDot, { backgroundColor: getStatusColor(getLatestReading(4), "soilMoisture") }]} />
+              {getLatestReading(4)} Lux<View style={[styles.statusDot, { backgroundColor: getStatusColor(getLatestReading(4), "soilMoisture") }]} />
+            </Text>
+          </Card.Content>
+        </Card>*/}
+        
+
+        <Card style={styles.card} onPress={() => navigation.navigate('LightIntensity', { userId })}>
+          <Card.Content style={styles.cardContent}>
+            <Icon name="wb-sunny" size={30} color={COLORS.green} />
+            <Text style={styles.cardTitle}>Light Intensity</Text>
+            <Text style={styles.cardText}>
+              {getLatestReading(4)} Lux<View style={[styles.statusDot, { backgroundColor: getStatusColor(getLatestReading(4), "soilMoisture") }]} />
             </Text>
           </Card.Content>
         </Card>
+
+
 
         <Card style={styles.card} onPress={() => navigation.navigate('Temperature', { userId })}>
           <Card.Content style={styles.cardContent}>
@@ -182,10 +208,10 @@ export default function DashboardScreen({ navigation, route }) {
 
         <Card style={styles.card} onPress={() => navigation.navigate('EcLevel', { userId })}>
           <Card.Content style={styles.cardContent}>
-            <Icon name="electrical-services" size={30} color={COLORS.green} />
-            <Text style={styles.cardTitle}>EC Level</Text>
+            <Icon name="water" size={30} color={COLORS.green} />
+            <Text style={styles.cardTitle}>Water Level</Text>
             <Text style={styles.cardText}>
-              {getLatestReading(3)} mS/cm<View style={[styles.statusDot, { backgroundColor: getStatusColor(getLatestReading(3), "EC") }]} />
+              {getLatestReading(3)} <View style={[styles.statusDot, { backgroundColor: getStatusColor(getLatestReading(3), "EC") }]} />
             </Text>
           </Card.Content>
         </Card>
@@ -244,7 +270,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cardTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: COLORS.green,  // Use green color for title
     marginTop: 5,

@@ -26,17 +26,54 @@ const RegisterScreen = ({ navigation }) => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-      
       await updateProfile(user, { displayName: name });
-      
-      await setDoc(doc(db, 'users', user.uid), {
+
+      const userRef = doc(db, 'users', user.uid);
+
+      await setDoc(userRef, {
         name,
         email,
-        createdAt: serverTimestamp()
+        createdAt: serverTimestamp(),
       });
 
-      Alert.alert('Success', 'Account created!');
+      // Initialize subcollections
+      await Promise.all([
+        setDoc(doc(db, `users/${user.uid}/active_commands`, 'init'), {
+          createdAt: serverTimestamp(),
+          status: 'init'
+        }),
+        setDoc(doc(db, `users/${user.uid}/alerts`, 'init'), {
+          createdAt: serverTimestamp(),
+          status: 'init'
+        }),
+        setDoc(doc(db, `users/${user.uid}/control_settings`, 'init'), {
+          createdAt: serverTimestamp(),
+          threshold_ph: 7,
+          mode: 'auto'
+        }),
+        setDoc(doc(db, `users/${user.uid}/devices`, 'init'), {
+          createdAt: serverTimestamp(),
+          registered: false
+        }),
+        setDoc(doc(db, `users/${user.uid}/stop_settings`, 'init'), {
+          createdAt: serverTimestamp(),
+          mode: 'manual'
+        }),
+        setDoc(doc(db, `users/${user.uid}/sensor_data`, '1'), {
+          ec: 3.5,
+          humidity: 45,
+          light_intensity: 75,
+          ph: 12,
+          soil_moisture: 31,
+          temperature: 26.3,
+          water_level: "critical",
+          timestamp: serverTimestamp()
+        }),
+      ]);
+
+      Alert.alert('Success', 'Account and default data created!');
       navigation.navigate('Home');
+
     } catch (error) {
       Alert.alert('Registration Error', error.message);
     }
@@ -49,7 +86,7 @@ const RegisterScreen = ({ navigation }) => {
       <TextInput
         style={styles.input}
         placeholder="Full Name"
-        placeholderTextColor="#666"  // ✅ Darker placeholder color
+        placeholderTextColor="#666"
         value={name}
         onChangeText={setName}
       />
@@ -57,7 +94,7 @@ const RegisterScreen = ({ navigation }) => {
       <TextInput
         style={styles.input}
         placeholder="Email"
-        placeholderTextColor="#666"  // ✅ Darker placeholder color
+        placeholderTextColor="#666"
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
@@ -67,7 +104,7 @@ const RegisterScreen = ({ navigation }) => {
       <TextInput
         style={styles.input}
         placeholder="Password"
-        placeholderTextColor="#666"  // ✅ Darker placeholder color
+        placeholderTextColor="#666"
         value={password}
         onChangeText={setPassword}
         secureTextEntry
@@ -105,12 +142,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff', 
     borderWidth: 1, 
     borderColor: '#ddd',
-    color: '#000' // ✅ Ensures input text is always visible
+    color: '#000'
   },
   registerButton: {
     width: '100%', 
     padding: 15, 
-    backgroundColor: COLORS.green || "#28a745", // ✅ Ensures button color exists
+    backgroundColor: COLORS.green || "#28a745",
     borderRadius: 8, 
     alignItems: 'center'
   },
