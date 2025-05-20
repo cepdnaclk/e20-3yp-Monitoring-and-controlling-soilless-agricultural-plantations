@@ -826,7 +826,7 @@ const styles = StyleSheet.create({
   },
   tankOuter: {
     width: 40,
-    height: 120,
+    height: 150,
     borderWidth: 1,
     borderColor: '#ccc',
     backgroundColor: '#e0e0e0',
