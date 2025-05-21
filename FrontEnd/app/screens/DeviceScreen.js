@@ -7,6 +7,9 @@ import { Camera, CameraView } from 'expo-camera';
 import { getFirestore, collection, doc, setDoc, addDoc,getDocs,getDoc, deleteDoc,onSnapshot  } from 'firebase/firestore';
 import COLORS from '../config/colors';
 import devicesData from '../config/devices';
+import GroupPickerModal from '../modals/GroupPickerModal';
+
+
 
 
 export default function DeviceScreen() {
@@ -16,6 +19,11 @@ export default function DeviceScreen() {
   const [isScanning, setIsScanning] = useState(false);
   const [scanned, setScanned] = useState(false);
   const [processingQR, setProcessingQR] = useState(false);
+  const [groupPickerVisible, setGroupPickerVisible] = useState(false);
+  const [pendingDevice, setPendingDevice] = useState(null);
+  const [groupMap, setGroupMap] = useState({});
+
+
   
   const navigation = useNavigation();
   const route = useRoute();
@@ -111,105 +119,118 @@ export default function DeviceScreen() {
   };
 
   // Remove a device
-  const removeDevice = async (id, name) => {
-    
-    if (!userId) return;
-  
-    try {
-      const sanitizedName = name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
-      const uniqueDocId = `${id}_${sanitizedName}`;
-      console.log('Removing device:', uniqueDocId);
-  
-      const deviceDocRef = doc(db, 'users', userId, 'devices', uniqueDocId);
-      await deleteDoc(deviceDocRef);
-  
-      Alert.alert('Success', 'Device removed successfully.');
-    } catch (error) {
-      console.error('Error removing device from Firestore:', error);
-      Alert.alert('Error', 'Failed to remove device.');
-    }
-  };
+  const removeDevice = async (id) => {
+  if (!userId) return;
+
+  try {
+    const deviceDocRef = doc(db, 'users', userId, 'devices', id);
+    await deleteDoc(deviceDocRef);
+
+    Alert.alert('Success', 'Device removed successfully.');
+  } catch (error) {
+    console.error('Error removing device from Firestore:', error);
+    Alert.alert('Error', 'Failed to remove device.');
+  }
+};
+
   
   
   // Handle QR Code Scan
 
-  const handleQRCodeScan = async ({ data }) => {
-    if (scanned || processingQR) return;
-  
-    setScanned(true);
-    setProcessingQR(true);
-  
+const handleQRCodeScan = async ({ data }) => {
+  if (scanned || processingQR) return;
+
+  setScanned(true);
+  setProcessingQR(true);
+
+  try {
+    console.log('Processing QR code data:', data);
+    let scannedData;
+
     try {
-      console.log('Processing QR code data:', data);
-      let scannedData;
-      
-      try {
-        scannedData = JSON.parse(data);
-      } catch (e) {
-        console.error('Failed to parse QR data:', e);
-        Alert.alert('Invalid QR Code', 'The scanned QR code contains invalid JSON data.');
-        setProcessingQR(false);
-        setScanned(false);
-        return;
-      }
-  
-      if (!scannedData.id || !scannedData.name || !scannedData.type) {
-        Alert.alert('Invalid QR Code', 'The scanned QR code does not contain valid device information.');
-        setProcessingQR(false);
-        setScanned(false);
-        return;
-      }
-  
-      const sanitizedName = scannedData.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
-      const uniqueDocId = `${scannedData.id}_${sanitizedName}`;
-  
-      if (userId) {
-        const deviceDocRef = doc(db, 'users', userId, 'devices', uniqueDocId);
-        const existingDevice = await getDoc(deviceDocRef);
-  
-        if (existingDevice.exists()) {
-          Alert.alert('Duplicate Device', 'This device already exists.');
-          setProcessingQR(false);
-          setScanned(false);
-          return;
-        }
-      }
-  
-      // Create the device object with explicitly set WiFi credentials
-      const newDevice = {
-        id: scannedData.id,
-        name: scannedData.name,
-        type: scannedData.type,
-        status: scannedData.status || 'Unknown',
-        connectivity: scannedData.connectivity || 'Unknown',
-        icon: scannedData.icon || 'device-thermostat',
-        description: scannedData.description || 'No description available.',
-        power: scannedData.power || 'Unknown',
-        img: scannedData.imageUrl || null,
-        dateAdded: new Date().toISOString(),
-        // Always set these fields explicitly, regardless of QR content
-        wifiSSID: "DEFAULT_SSID",  
-        wifiPassword: "DEFAULT_PASSWORD" 
-      };
-  
-      console.log('📝 Writing device to Firestore with WiFi credentials:', 
-        newDevice.wifiSSID, newDevice.wifiPassword);
-  
-      if (userId) {
-        const userDevicesRef = collection(db, 'users', userId, 'devices');
-        
-        // Option 1: Use setDoc with a specific document ID
-        const deviceDocRef = doc(userDevicesRef, uniqueDocId);
-        await setDoc(deviceDocRef, newDevice);
-        
-        console.log('✅ Scanned device added to Firestore with ID:', uniqueDocId);
-      }
-  
-    } catch (error) {
-      Alert.alert('Error', 'Failed to process QR code.');
-      console.error('QR Scan Error:', error);
+      scannedData = JSON.parse(data);
+    } catch (e) {
+      console.error('Failed to parse QR data:', e);
+      Alert.alert('Invalid QR Code', 'The scanned QR code contains invalid JSON data.');
+      setProcessingQR(false);
+      setScanned(false);
+      return;
     }
+
+    if (!scannedData.id || !scannedData.name || !scannedData.type) {
+      Alert.alert('Invalid QR Code', 'The scanned QR code does not contain valid device information.');
+      setProcessingQR(false);
+      setScanned(false);
+      return;
+    }
+
+    // Device object to be saved
+    const newDevice = {
+      id: scannedData.id,
+      name: scannedData.name,
+      type: scannedData.type,
+      status: scannedData.status || 'Unknown',
+      connectivity: scannedData.connectivity || 'Unknown',
+      icon: scannedData.icon || 'device-thermostat',
+      description: scannedData.description || 'No description available.',
+      power: scannedData.power || 'Unknown',
+      img: scannedData.imageUrl || null,
+      dateAdded: new Date().toISOString(),
+      wifiSSID: "DEFAULT_SSID",
+      wifiPassword: "DEFAULT_PASSWORD"
+    };
+
+    console.log('📝 Writing device to Firestore with WiFi credentials:', newDevice.wifiSSID, newDevice.wifiPassword);
+
+    if (userId) {
+      const deviceDocRef = doc(db, 'users', userId, 'devices', scannedData.id);
+      const existingDevice = await getDoc(deviceDocRef);
+
+      if (existingDevice.exists()) {
+        Alert.alert('Duplicate Device', 'This device already exists.');
+        setProcessingQR(false);
+        setScanned(false);
+        return;
+      }
+
+      setPendingDevice({ device: newDevice, type: 'sensor' }); // or 'controller' if detected
+      setGroupPickerVisible(true);
+
+      console.log('✅ Scanned device added to Firestore with ID:', scannedData.id);
+    }
+
+  } catch (error) {
+    Alert.alert('Error', 'Failed to process QR code.');
+    console.error('QR Scan Error:', error);
+  }
+};
+
+const handleAssignGroup = async (groupId) => {
+  setGroupPickerVisible(false);
+  if (!pendingDevice || !userId) return;
+
+  const { device } = pendingDevice;
+
+  // Attach the groupId
+  const deviceWithGroup = {
+    ...device,
+    groupId,
+    userId,
   };
+
+  // 1. Save to global device list
+  const globalDeviceRef = doc(db, 'users', userId, 'devices', device.id);
+  await setDoc(globalDeviceRef, deviceWithGroup);
+
+  // 2. Save to group-specific devices subcollection
+  const groupDeviceRef = doc(db, 'users', userId, 'deviceGroups', groupId, 'devices', device.id);
+  await setDoc(groupDeviceRef, deviceWithGroup);
+
+  setPendingDevice(null);
+};
+
+
+
 
   
 
@@ -287,23 +308,58 @@ export default function DeviceScreen() {
 </Modal>
 
 
-      <FlatList
-        data={devices}
-        keyExtractor={(item, index) => `${item.id}-${index}`}
-        renderItem={({ item }) => (
-          <TouchableOpacity onPress={() => navigation.navigate('DeviceDetail', { device: item })}>
-            <View style={styles.deviceItem}>
-              <Icon name={item.icon || 'device-thermostat'} size={30} color={COLORS.green} style={styles.deviceIcon} />
-              <Text style={styles.deviceText}>{item.name}</Text>
-              <TouchableOpacity onPress={() => removeDevice(item.id, item.name)}>
-                <Text style={styles.deleteText}>Remove</Text>
-              </TouchableOpacity>
+      <View style={styles.groupedContainer}>
+  {/* Group devices by groupId */}
+  {Object.entries(
+    devices.reduce((acc, device) => {
+      const group = device.groupId || 'ungrouped';
+      if (!acc[group]) acc[group] = [];
+      acc[group].push(device);
+      return acc;
+    }, {})
+  ).map(([groupId, groupDevices]) => (
+    <View key={groupId} style={styles.groupSection}>
+      <Text style={styles.groupTitle}>
+  {groupId === 'ungrouped'
+    ? 'Ungrouped Devices'
+    : `${groupMap[groupId] || groupId}`}
+</Text>
 
-            </View>
-          </TouchableOpacity>
-        )}
-      />
+      {groupDevices.map((item) => (
+        <TouchableOpacity
+          key={item.id}
+          onPress={() => navigation.navigate('DeviceDetail', { device: item })}
+        >
+          <View style={styles.deviceItem}>
+            <Icon
+              name={item.icon || 'device-thermostat'}
+              size={30}
+              color={COLORS.green}
+              style={styles.deviceIcon}
+            />
+            <Text style={styles.deviceText}>{item.name}</Text>
+            <TouchableOpacity onPress={() => removeDevice(item.id)}>
+              <Text style={styles.deleteText}>Remove</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      ))}
     </View>
+  ))}
+</View>
+
+      <GroupPickerModal
+  visible={groupPickerVisible}
+  userId={userId}
+  onSelectGroup={handleAssignGroup}
+  onClose={() => {
+    setGroupPickerVisible(false);
+    setPendingDevice(null);
+  }}
+/>
+
+    </View>
+    
   );
 }
 
@@ -376,5 +432,22 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
-  }
+  },
+  groupedContainer: {
+  marginTop: 10,
+},
+groupSection: {
+  marginBottom: 20,
+},
+groupTitle: {
+  fontSize: 20,
+  fontWeight: 'bold',
+  color: COLORS.dark,
+  marginBottom: 10,
+  borderBottomWidth: 1,
+  borderBottomColor: '#ccc',
+  paddingBottom: 5,
+  paddingLeft: 5,
+},
+
 });
