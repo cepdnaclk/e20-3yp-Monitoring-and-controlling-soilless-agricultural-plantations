@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, SafeAreaView, Image, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal 
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig'; // Ensure Firebase is properly imported
 import COLORS from '../config/colors';
 
@@ -18,12 +18,37 @@ export default function DeviceDetailsScreen({ navigation, route }) {
   console.log(`📌 Viewing Device Details for: ${device.name}`);
   console.log(`🆔 Firestore Document ID: ${uniqueDocId}`);
 
-  // WiFi Editing Modal State
+  // States
   const [modalVisible, setModalVisible] = useState(false);
   const [wifiSSID, setWifiSSID] = useState(device.wifiSSID || '');
   const [wifiPassword, setWifiPassword] = useState(device.wifiPassword || '');
+  const [groupName, setGroupName] = useState('');
 
-  // ✅ Save updated WiFi details to Firestore
+  // Fetch group name using groupId
+  useEffect(() => {
+    const fetchGroupName = async () => {
+      try {
+        const userId = auth.currentUser?.uid;
+        if (!userId || !device.groupId) return;
+
+        const groupRef = doc(db, 'users', userId, 'deviceGroups', device.groupId);
+        const groupSnap = await getDoc(groupRef);
+
+        if (groupSnap.exists()) {
+          const data = groupSnap.data();
+          setGroupName(data.name || device.groupId);
+        } else {
+          setGroupName(device.groupId);
+        }
+      } catch (err) {
+        console.error('Error fetching group name:', err);
+      }
+    };
+
+    fetchGroupName();
+  }, []);
+
+  // Save updated WiFi details to Firestore
   const updateWiFiDetails = async () => {
     try {
       const userId = auth.currentUser?.uid;
@@ -55,7 +80,6 @@ export default function DeviceDetailsScreen({ navigation, route }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header with Back Button */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Icon name="arrow-back" size={28} color={COLORS.dark} />
@@ -64,7 +88,6 @@ export default function DeviceDetailsScreen({ navigation, route }) {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        {/* Device Image */}
         <View style={styles.imageContainer}>
           {device.img ? (
             <Image source={{ uri: device.img }} style={styles.deviceImage} />
@@ -73,14 +96,12 @@ export default function DeviceDetailsScreen({ navigation, route }) {
           )}
         </View>
 
-        {/* Device Information */}
         <View style={styles.detailsContainer}>
           <View style={styles.labelContainer}>
             <View style={styles.line} />
             <Text style={styles.sectionTitle}>Device Information</Text>
           </View>
 
-          {/* Read-Only Device Name */}
           <TextInput
             style={[styles.input, styles.disabledInput]}
             value={name}
@@ -89,25 +110,22 @@ export default function DeviceDetailsScreen({ navigation, route }) {
             placeholderTextColor="#888"
           />
 
-          {/* Button to Edit WiFi Details */}
           <TouchableOpacity style={styles.wifiButton} onPress={() => setModalVisible(true)}>
             <Text style={styles.wifiButtonText}>Edit WiFi Settings</Text>
           </TouchableOpacity>
 
-          {/* Device Specifications */}
           <View style={styles.specsContainer}>
             <Text style={styles.specsTitle}>Specifications:</Text>
-            <Text style={styles.specsText}>🆔 Firestore Document ID: {uniqueDocId}</Text> 
-            <Text style={styles.specsText}>⚙️ Type: {device.type || 'Unknown'}</Text>
-            <Text style={styles.specsText}>📡 Connectivity: {device.connectivity || 'Not Available'}</Text>
-            <Text style={styles.specsText}>⚡ Power: {device.power ? `${device.power}W` : 'Unknown'}</Text>
-            <Text style={styles.specsText}>📍 Location: {device.location || 'Not Assigned'}</Text>
-            <Text style={styles.specsText}>🔵 Status: {device.status || 'Unknown'}</Text>
+            <Text style={styles.specsText}>Type: {device.type || 'Unknown'}</Text>
+            <Text style={styles.specsText}>Connectivity: {device.connectivity || 'Not Available'}</Text>
+            <Text style={styles.specsText}>Power: {device.power ? `${device.power}W` : 'Unknown'}</Text>
+            <Text style={styles.specsText}>Location: {device.location || 'Not Assigned'}</Text>
+            <Text style={styles.specsText}>Group: {groupName || 'Not Assigned'}</Text>
+            <Text style={styles.specsText}>Status: {device.status || 'Unknown'}</Text>
           </View>
         </View>
       </ScrollView>
 
-      {/* WiFi Credentials Modal */}
       <Modal visible={modalVisible} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
@@ -228,6 +246,19 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  specsContainer: {
+    marginTop: 15,
+  },
+  specsTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 5,
+  },
+  specsText: {
+    fontSize: 15,
+    color: COLORS.dark,
+    marginBottom: 3,
   },
   modalOverlay: {
     flex: 1,

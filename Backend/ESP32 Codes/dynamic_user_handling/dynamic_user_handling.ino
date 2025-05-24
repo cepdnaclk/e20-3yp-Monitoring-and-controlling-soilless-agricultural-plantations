@@ -13,6 +13,7 @@ const char* mqttPassword = "Tharusha2001";
 // Device and User Info
 const char* deviceId = "esp12345";
 String userId = "";
+String groupId = "";
 String controlTopic = "";
 String sensorTopic = "";
 
@@ -57,10 +58,11 @@ bool fetchUserId() {
     DynamicJsonDocument doc(512);
     deserializeJson(doc, response);
     userId = doc["userId"].as<String>();
+    groupId = doc["groupId"].as<String>();
 
     // Build dynamic topics
-    controlTopic = userId + "/" + deviceId + "/control";
-    sensorTopic = userId + "/" + deviceId + "/sensor";
+    controlTopic = userId + "/" + groupId + "/" + deviceId + "/control";
+    sensorTopic = userId + "/" + groupId + "/" + deviceId + "/sensor";
 
     Serial.println("Retrieved userId: " + userId);
     Serial.println("MQTT Topics: ");

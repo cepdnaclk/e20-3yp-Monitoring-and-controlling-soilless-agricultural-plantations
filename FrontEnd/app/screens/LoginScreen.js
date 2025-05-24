@@ -34,7 +34,27 @@ const LoginScreen = ({ navigation }) => {
       navigation.navigate('Home', { userId: user.uid }); // Pass userId to HomeScreen
     } catch (error) {
       console.error("❌ Login Error:", error.message);
-      Alert.alert('Login Failed', error.message);
+      let message = "Something went wrong. Please try again.";
+switch (error.code) {
+  case 'auth/invalid-email':
+    message = "Invalid email format.";
+    break;
+  case 'auth/user-not-found':
+    message = "No user found with this email.";
+    break;
+  case 'auth/wrong-password':
+    message = "Incorrect password.";
+    break;
+  case 'auth/network-request-failed':
+    message = "Network error. Check your internet connection.";
+    break;
+  case 'auth/too-many-requests':
+    message = "Too many login attempts. Please try again later.";
+    break;
+}
+
+Alert.alert('Login Failed', message);
+
     } finally {
       setLoading(false); // Stop loading
     }

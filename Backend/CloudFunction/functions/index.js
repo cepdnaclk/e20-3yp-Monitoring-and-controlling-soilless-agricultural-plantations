@@ -35,10 +35,10 @@ mqttClient.on("connect", () => {
 });
 
 exports.subscribeToNewDevice = onDocumentCreated(
-    "users/{userId}/devices/{deviceId}",
+    "users/{userId}/deviceGroups/{groupId}/devices/{deviceId}",
     async (event) => {
-      const {userId, deviceId} = event.params;
-      const sensorTopic = `${userId}/${deviceId}/sensor`;
+      const {userId, groupId, deviceId} = event.params;
+      const sensorTopic = `${userId}/${groupId}/${deviceId}/sensor`;
 
       mqttClient.subscribe(sensorTopic, {qos: 1}, (err) => {
         if (!err) {
@@ -48,6 +48,23 @@ exports.subscribeToNewDevice = onDocumentCreated(
         }
       });
     });
+
+
+exports.unsubscribeFromRemovedDevice = onDocumentDeleted(
+    "users/{userId}/deviceGroups/{groupId}/devices/{deviceId}",
+    async (event) => {
+      const {userId, groupId, deviceId} = event.params;
+      const sensorTopic = `${userId}/${groupId}/${deviceId}/sensor`;
+
+      mqttClient.unsubscribe(sensorTopic, (err) => {
+        if (!err) {
+          console.log(`🛑 Unsubscribed from topic: ${sensorTopic}`);
+        } else {
+          console.error(`❌ Unsubscription error ${sensorTopic}:`, err.message);
+        }
+      });
+    });
+
 
 /**
  * HTTPS Cloud Function to get userId for a given deviceId.
@@ -65,31 +82,52 @@ exports.getUserId = onRequest(async (req, res) => {
 
   try {
     const usersSnapshot = await db.collection("users").get();
+    console.log("👤 Total users found:", usersSnapshot.size);
 
     for (const userDoc of usersSnapshot.docs) {
-      const deviceDoc = await db
-          .doc(`users/${userDoc.id}/devices/${deviceId}`)
-          .get();
+      const userId = userDoc.id;
+      console.log(`🔍 Checking user: ${userId}`);
 
-      if (deviceDoc.exists) {
-        console.log("Device found for userId:", userDoc.id);
-        return res.status(200).json({userId: userDoc.id});
+      const deviceGroupsRef = db.collection(`users/${userId}/deviceGroups`);
+      const groupsSnapshot = await deviceGroupsRef.get();
+      console.log(`📁 Found ${groupsSnapshot.size} groups for user ${userId}`);
+
+      for (const groupDoc of groupsSnapshot.docs) {
+        const groupId = groupDoc.id;
+        console.log(`🔍 Checking group: ${groupId}`);
+
+        const deviceRef = db.doc(
+            `users/${userId}/deviceGroups/${groupId}/devices/${deviceId}`,
+        );
+        console.log(`📄 Looking for device: ${deviceRef.path}`);
+        const deviceDoc = await deviceRef.get();
+
+        if (deviceDoc.exists) {
+          console.log(`✅ Device found in path: ${deviceRef.path}`);
+          return res.status(200).json({userId: userId, groupId: groupId});
+        }
       }
     }
 
+    console.log("❌ Device not found in any group.");
     return res.status(404).json({error: "Device not found"});
   } catch (error) {
-    console.log("❌ Error retrieving userId:", error.message);
+    console.error("❌ Error retrieving userId:", error.message);
     return res.status(500).json({error: "Internal server error"});
   }
 });
 
+
 // Handle incoming MQTT messages and store them in Firestore
 mqttClient.on("message", async (topic, message) => {
   try {
-    const userId = topic.split("/")[0]; // topic: {userId}/{deviceId}/sensor
+    const userId = topic.split("/")[0]; //  {userId}/{groupId}/{deviceId}/sensor
+    const groupId = topic.split("/")[1];
+    const deviceId = topic.split("/")[2];
     console.log(`Received message on topic: ${topic}`);
-    console.log(userId);
+    console.log(
+        `userId: ${userId}, groupId: ${groupId}, deviceId: ${deviceId}`,
+    );
     const data = JSON.parse(message.toString());
 
     const sensorData = {
