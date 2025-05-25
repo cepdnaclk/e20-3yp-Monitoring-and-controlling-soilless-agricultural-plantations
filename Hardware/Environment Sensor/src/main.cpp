@@ -7,24 +7,26 @@
 #include <Wire.h>
 
 // WiFi credentials
-const char* ssid = "Eng-Student";
-const char* password = "3nG5tuDt";
+// const char *ssid = "Eng-Student";
+// const char *password = "3nG5tuDt";
+
+const char *ssid = "Devin Hasnaka";
+const char *password = "12345678";
 
 // MQTT credentials
-const char* mqttServer = "23162742be094f829a5b3f6f29eb5dd6.s1.eu.hivemq.cloud";
+const char *mqttServer = "23162742be094f829a5b3f6f29eb5dd6.s1.eu.hivemq.cloud";
 const int mqttPort = 8883;
-const char* mqttUser = "Tharusha";
-const char* mqttPassword = "Tharusha2001";
+const char *mqttUser = "Tharusha";
+const char *mqttPassword = "Tharusha2001";
 
 // const char* mqttServer = "4cb394bbc8284672b38e8d39dc842c9f.s1.eu.hivemq.cloud";
 // const int mqttPort = 8883;
 // const char* mqttUser = "Devin";
 // const char* mqttPassword = "Devin2001";
 
-
 // Topics
-const char* controlTopic = "test/topic";     // Receive control updates
-const char* sensorTopic = "test/sensor";     // Send sensor data
+const char *controlTopic = "test/topic"; // Receive control updates
+const char *sensorTopic = "test/sensor"; // Send sensor data
 
 // Secure WiFi client
 WiFiClientSecure espClient;
@@ -32,34 +34,44 @@ PubSubClient client(espClient);
 
 // Timer variables
 unsigned long lastPublishTime = 0;
-const long publishInterval = 5000;  // Publish every 5 minutes
+const long publishInterval = 5000; // Publish every 5 minutes
 
-
-//Initializing the DHT sensor
+// Initializing the DHT sensor
 DHTesp dht;
 
-//Initializing the BH1750 sensor
+// Initializing the BH1750 sensor
 BH1750 LightMeter;
-
+void blinkLED(int pin, int duration)
+{
+  digitalWrite(pin, HIGH);
+  delay(duration);
+  digitalWrite(pin, LOW);
+}
 // Callback for incoming MQTT messages
-void callback(char* topic, byte* payload, unsigned int length) {
+void callback(char *topic, byte *payload, unsigned int length)
+{
   Serial.print("Message received on topic: ");
   Serial.println(topic);
 
   String message = "";
-  for (int i = 0; i < length; i++) {
+  for (int i = 0; i < length; i++)
+  {
     message += (char)payload[i];
   }
 
   Serial.println("Message: " + message);
 
-  if (String(topic) == controlTopic) {
+  if (String(topic) == controlTopic)
+  {
     Serial.println("Processing Firestore update...");
     // Parse JSON message for pump control
-    if (message.indexOf("\"pump\": \"ON\"") > 0) {
+    if (message.indexOf("\"pump\": \"ON\"") > 0)
+    {
       digitalWrite(5, HIGH);
       Serial.println("Pump ON");
-    } else if (message.indexOf("\"pump\": \"OFF\"") > 0) {
+    }
+    else if (message.indexOf("\"pump\": \"OFF\"") > 0)
+    {
       digitalWrite(5, LOW);
       Serial.println("Pump OFF");
     }
@@ -67,22 +79,30 @@ void callback(char* topic, byte* payload, unsigned int length) {
 }
 
 // Function to connect to MQTT
-void connectToMQTT() {
-  while (!client.connected()) {
+void connectToMQTT()
+{
+  while (!client.connected())
+  {
     Serial.println("Connecting to MQTT...");
-    if (client.connect("ESP32Client", mqttUser, mqttPassword)) {
+    if (client.connect("ESP32Client", mqttUser, mqttPassword))
+    {
       Serial.println("Connected to HiveMQ");
-      client.subscribe(controlTopic);  // Subscribe to control topic
-    } else {
+      digitalWrite(17, HIGH); // Turn on LED when connected (Red LED)
+      client.subscribe(controlTopic); // Subscribe to control topic
+    }
+    else
+    {
       Serial.print("MQTT Connection Failed, State: ");
       Serial.println(client.state());
       delay(2000);
+      blinkLED(17, 1000); // Blink LED while connecting
     }
   }
 }
 
 // Function to publish random sensor data
-void publishSensorData() {
+void publishSensorData()
+{
   // float temperature = random(20, 35) + random(0, 99) / 100.0;  // Random 20.00 - 34.99
   // float humidity = random(40, 90) + random(0, 99) / 100.0;     // Random 40.00 - 89.99
   float temperature = dht.getTemperature();
@@ -90,63 +110,74 @@ void publishSensorData() {
   float light = LightMeter.readLightLevel();
 
   String payload = "{\"temperature\": " + String(temperature, 2) +
-                   ", \"humidity\": " + String(humidity, 2) + 
+                   ", \"humidity\": " + String(humidity, 2) +
                    ", \"light_intensity\": " + String(light, 2) + "}";
 
   Serial.print("Publishing Sensor Data: ");
   Serial.println(payload);
 
-  if (client.publish(sensorTopic, payload.c_str())) {
+  if (client.publish(sensorTopic, payload.c_str()))
+  {
     Serial.println("Data Published Successfully");
-  } else {
+  }
+  else
+  {
     Serial.println("Publish Failed");
   }
   Serial.print("Light Level: " + String(light) + " lx");
   Serial.print("\tTemperature: " + String(temperature) + " °C");
   Serial.println("\tHumidity: " + String(humidity) + " %");
 
-  //delay(3000);  // Delay to prevent flooding MQTT broker
+  // delay(3000);  // Delay to prevent flooding MQTT broker
 }
 
-void setup() {
+void setup()
+{
   Serial.begin(9600);
   pinMode(5, OUTPUT);
+  pinMode(17, OUTPUT); // LED pin for MQTT connection status
 
   WiFi.begin(ssid, password);
   Serial.print("Connecting to WiFi");
-  while (WiFi.status() != WL_CONNECTED) {
+  while (WiFi.status() != WL_CONNECTED)
+  {
     delay(500);
     Serial.print(".");
+    blinkLED(5, 1000); // Blink LED while connecting
   }
   Serial.println("\nWiFi Connected");
+  digitalWrite(5, HIGH); // Turn on LED when connected
 
-  espClient.setInsecure();  // Allow SSL without certificates
+  espClient.setInsecure(); // Allow SSL without certificates
   client.setServer(mqttServer, mqttPort);
   client.setCallback(callback);
   connectToMQTT();
 
-
-  //Initializing the DHT sensor
+  // Initializing the DHT sensor
   dht.setup(4, DHTesp::DHT22);
 
-  //Initializing the BH1750 sensor
-    /*
-  BH1750 aka Light Meter
-  SDA connect to GPIO21
-  SCL connect to GPIO22
-  */
-  Wire.begin(21,22);
+  // Initializing the BH1750 sensor
+  /*
+BH1750 aka Light Meter
+SDA connect to GPIO21
+SCL connect to GPIO22
+*/
+  Wire.begin(21, 22);
   LightMeter.begin();
 }
 
-void loop() {
-  if (!client.connected()) {
+void loop()
+{
+
+  if (!client.connected())
+  {
     connectToMQTT();
   }
   client.loop(); // Keep MQTT connection active
 
   // Publish sensor data every 5 minutes
-  if (millis() - lastPublishTime >= publishInterval) {
+  if (millis() - lastPublishTime >= publishInterval)
+  {
     publishSensorData();
     lastPublishTime = millis();
   }
