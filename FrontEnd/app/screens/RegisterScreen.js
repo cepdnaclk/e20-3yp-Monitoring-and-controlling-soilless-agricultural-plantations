@@ -72,7 +72,8 @@ const RegisterScreen = ({ navigation }) => {
       ]);
 
       Alert.alert('Success', 'Account and default data created!');
-      navigation.navigate('Home');
+      navigation.navigate('Home', { userId: user.uid });
+
 
     } catch (error) {
       Alert.alert('Registration Error', error.message);
