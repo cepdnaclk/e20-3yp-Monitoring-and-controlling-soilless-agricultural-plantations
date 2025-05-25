@@ -38,28 +38,23 @@ const RegisterScreen = ({ navigation }) => {
 
       // Initialize subcollections
       await Promise.all([
-        setDoc(doc(db, `users/${user.uid}/active_commands`, 'init'), {
+        setDoc(doc(db, `users/${user.uid}/deviceGroups/${groupId}/active_commands`, 'init'), {
+
+        }),
+        setDoc(doc(db, `users/${user.uid}/deviceGroups/${groupId}/alerts`, 'init'), {
           createdAt: serverTimestamp(),
           status: 'init'
         }),
-        setDoc(doc(db, `users/${user.uid}/alerts`, 'init'), {
-          createdAt: serverTimestamp(),
-          status: 'init'
-        }),
-        setDoc(doc(db, `users/${user.uid}/control_settings`, 'init'), {
+        setDoc(doc(db, `users/${user.uid}/deviceGroups/${groupId}/control_settings`, 'init'), {
           createdAt: serverTimestamp(),
           threshold_ph: 7,
           mode: 'auto'
         }),
-        setDoc(doc(db, `users/${user.uid}/devices`, 'init'), {
-          createdAt: serverTimestamp(),
-          registered: false
-        }),
-        setDoc(doc(db, `users/${user.uid}/stop_settings`, 'init'), {
+        setDoc(doc(db, `users/${user.uid}/deviceGroups/${groupId}/stop_settings`, 'init'), {
           createdAt: serverTimestamp(),
           mode: 'manual'
         }),
-        setDoc(doc(db, `users/${user.uid}/sensor_data`, '1'), {
+        setDoc(doc(db, `users/${user.uid}/deviceGroups/${groupId}/sensor_data`, '1'), {
           ec: 3.5,
           humidity: 45,
           light_intensity: 75,

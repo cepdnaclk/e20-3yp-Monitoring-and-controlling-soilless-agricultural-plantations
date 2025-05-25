@@ -7,7 +7,8 @@ import { db } from "../firebaseConfig";
 import COLORS from '../config/colors';
 
 export default function LightIntensityScreen({ navigation, route }) {
-  const { userId } = route.params;
+  const { userId, groupId } = route.params;
+
   const [chartData, setChartData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [lightLevel, setLightLevel] = useState("700"); // Temporary adjusting value
@@ -22,8 +23,9 @@ export default function LightIntensityScreen({ navigation, route }) {
 
     const fetchLightLevel = async () => {
       try {
-        const docRef = doc(db, `users/${userId}/control_settings`, "1");
+        const docRef = doc(db, `users/${userId}/deviceGroups/${groupId}/control_settings`, "1");
         const docSnap = await getDoc(docRef);
+
 
         if (docSnap.exists()) {
           const data = docSnap.data();
@@ -64,8 +66,10 @@ export default function LightIntensityScreen({ navigation, route }) {
 
     setIsSetting(true);
     try {
-      const docRef = doc(db, `users/${userId}/control_settings`, "1");
+      const docRef = doc(db, `users/${userId}/deviceGroups/${groupId}/control_settings`, "1");
       await setDoc(docRef, { lightTarget: parseFloat(lightLevel) }, { merge: true });
+
+
 
       console.log("✅ Light intensity target updated in Firestore:", lightLevel);
       setCurrentLightLevel(lightLevel);
