@@ -61,9 +61,9 @@ const LandingScreen = ({ navigation }) => {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View>
-          <Text style={{ fontSize: 25, fontWeight: 'bold' }}>Your</Text>
+          <Text style={{ fontSize: 25, fontWeight: 'bold' }}>Hydroponic Setup</Text>
           <Text style={{ fontSize: 38, color: COLORS.green, fontWeight: 'bold' }}>
-            Plants
+            Ideas
           </Text>
         </View>
       </View>
@@ -81,7 +81,8 @@ const LandingScreen = ({ navigation }) => {
         </View>
       </View>
 
-      {/* ➕ Add Plantation Input */}
+      {/*
+      
       <View style={styles.addPlantContainer}>
         <TextInput
           placeholder="Enter plant name"
@@ -93,6 +94,8 @@ const LandingScreen = ({ navigation }) => {
           <Text style={styles.addPlantButtonText}>Add</Text>
         </TouchableOpacity>
       </View>
+
+      */}
 
       {/* 🌱 Display Plant List */}
       <FlatList

@@ -37,7 +37,7 @@ const plantations = [
     crop: 'Spinach',
     price: '22.99',
     like: true,
-    img: require('../plants/plant4.png'), 
+    img: require('../plants/plant10.png'), 
     about:
       'A spinach plantation using a floating raft hydroponic system. This ensures consistent nutrient absorption and pesticide-free, high-yield crops.',
   },
@@ -47,7 +47,7 @@ const plantations = [
     crop: 'Strawberries',
     price: '50.00',
     like: true,
-    img: require('../plants/plant5.png'), 
+    img: require('../plants/plant8.png'), 
     about:
       'An aeroponic strawberry plantation designed for maximum oxygenation and water efficiency, leading to faster growth and superior fruit quality.',
   },
@@ -57,7 +57,7 @@ const plantations = [
     crop: 'Bell Peppers',
     price: '45.99',
     like: false,
-    img: require('../plants/plant6.png'), 
+    img: require('../plants/plant7.png'), 
     about:
       'A Dutch bucket hydroponic system optimized for bell peppers. Provides controlled nutrient delivery and optimal growth conditions.',
   },
