@@ -43,11 +43,7 @@ const DetailsScreen = ({ navigation, route }) => {
             </View>
 
             {/* Monitor Button */}
-            <View style={style.monitorBtn}>
-              <Text style={{ color: COLORS.white, fontSize: 18, fontWeight: 'bold' }}>
-                Monitor
-              </Text>
-            </View>
+            
           </View>
         </View>
       </ScrollView>

@@ -3,7 +3,7 @@ import json
 
 # Example device data
 device_data = {
-    "id": "esp12345",
+    "id": "gsmmodule123",
     "name": "Controller Unit",
     "type": "Environmental Sensor",
     "status": "Inactive",
@@ -26,7 +26,7 @@ qr.make(fit=True)
 qr_image = qr.make_image(fill="black", back_color="white")
 
 # Save the QR Code as an image file
-qr_filename = "device_esp.png"
+qr_filename = "device_gsm.png"
 qr_image.save(qr_filename)
 
 print(f" QR Code saved as '{qr_filename}'")

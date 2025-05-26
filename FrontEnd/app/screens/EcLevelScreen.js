@@ -7,7 +7,7 @@ import { db } from "../firebaseConfig"; // Firestore reference
 import COLORS from '../config/colors';
 
 export default function EcLevelScreen({ navigation, route }) {
-  const { userId } = route.params;
+  const { userId,groupId } = route.params;
   const [chartData, setChartData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [ecLevel, setEcLevel] = useState("2.5"); // Manual input as string
@@ -23,8 +23,9 @@ export default function EcLevelScreen({ navigation, route }) {
 
     const fetchEcLevel = async () => {
       try {
-        const docRef = doc(db, `users/${userId}/control_settings`, "1");
+        const docRef = doc(db, `users/${userId}/deviceGroups/${groupId}/control_settings`, "1");
         const docSnap = await getDoc(docRef);
+
 
         if (docSnap.exists()) {
           const data = docSnap.data();
@@ -79,7 +80,7 @@ export default function EcLevelScreen({ navigation, route }) {
     setIsSetting(true);
 
     try {
-      const docRef = doc(db, `users/${userId}/control_settings`, "1");
+      const docRef = doc(db, `users/${userId}/deviceGroups/${groupId}/control_settings`, "1");
       await setDoc(docRef, { ecTarget: numericValue }, { merge: true });
       console.log("✅ EC Target updated:", numericValue);
       setCurrentEcLevel(ecLevel);

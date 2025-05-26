@@ -7,7 +7,8 @@ import { db } from "../firebaseConfig"; // Firestore reference
 import COLORS from '../config/colors';
 
 export default function PhLevelScreen({ navigation, route }) {
-  const { userId } = route.params;  // ✅ Get userId from navigation params
+  const { userId, groupId } = route.params;
+  // ✅ Get userId from navigation params
   const [chartData, setChartData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [phLevel, setPhLevel] = useState("6.8"); // Temporary adjusting value
@@ -23,8 +24,11 @@ export default function PhLevelScreen({ navigation, route }) {
 
     const fetchPhLevel = async () => {
       try {
-        const docRef = doc(db, `users/${userId}/control_settings`, "1");
+        const docRef = doc(db, `users/${userId}/deviceGroups/${groupId}/control_settings`, "1");
         const docSnap = await getDoc(docRef);
+
+
+        
 
         if (docSnap.exists()) {
           const data = docSnap.data();
@@ -69,8 +73,9 @@ export default function PhLevelScreen({ navigation, route }) {
     setIsSetting(true);
 
     try {
-      const docRef = doc(db, `users/${userId}/control_settings`, "1");
+      const docRef = doc(db, `users/${userId}/deviceGroups/${groupId}/control_settings`, "1");
       await setDoc(docRef, { pHTarget: parseFloat(phLevel) }, { merge: true });
+
 
       console.log("✅ User-Specific pH Target updated in Firestore:", phLevel);
       setCurrentPhLevel(phLevel);

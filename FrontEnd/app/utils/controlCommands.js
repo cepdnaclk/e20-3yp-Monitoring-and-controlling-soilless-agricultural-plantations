@@ -2,72 +2,81 @@ import { collection, doc, getDoc, setDoc, deleteDoc } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 
 // ✅ Send control command (prevents duplicates)
-export const sendControlCommand = async (userId, action, value) => {
+export const sendControlCommand = async (userId, groupId, action, value) => {
   try {
-    const commandRef = doc(db, `users/${userId}/active_commands`, action);
+    if (!userId || !groupId || !action) {
+      console.error("❌ Missing parameters in sendControlCommand.");
+      return;
+    }
 
-    // ✅ Check if the command is already active
+    const activeCommandsCol = collection(db, `users/${userId}/deviceGroups/${groupId}/active_commands`);
+    const commandRef = doc(activeCommandsCol, action);
+
     const existingCommand = await getDoc(commandRef);
     if (existingCommand.exists()) {
       console.log(`⚠️ Command already active: ${action}`);
       return;
     }
 
-    // ✅ Add command to active_commands
     await setDoc(commandRef, {
-      action: action,
-      value: value,
+      action,
+      value,
       timestamp: new Date(),
     });
 
-    console.log(`✅ Command Sent: ${action} (Value: ${value})`);
+    console.log(`✅ Control Command Sent: ${action} (Value: ${value})`);
   } catch (error) {
-    console.error("❌ Error sending control command:", error);
+    console.error("❌ Error in sendControlCommand:", error);
   }
 };
 
-// ✅ Send stop command (prevents duplicates)
-export const sendStopCommand = async (userId, action) => {
+// ✅ Send stop command (and delete it after 10s)
+export const sendStopCommand = async (userId, groupId, action) => {
   try {
-    if (!userId || !action) {
-      console.error("🚨 Invalid parameters: userId or action missing.");
+    if (!userId || !groupId || !action) {
+      console.error("❌ Missing parameters in sendStopCommand.");
       return;
     }
 
-    const activeCommandRef = doc(db, `users/${userId}/active_commands`, action);
-    const stopCommandName = `stop_${action}`; // ✅ Correct stop format
-    const stopCommandRef = doc(db, `users/${userId}/stop_commands`, stopCommandName);
+    const activeCommandsCol = collection(db, `users/${userId}/deviceGroups/${groupId}/active_commands`);
+    const stopCommandsCol = collection(db, `users/${userId}/deviceGroups/${groupId}/stop_commands`);
 
-    // ✅ Step 1: Check if the action is currently active
-    const existingCommand = await getDoc(activeCommandRef);
-    if (!existingCommand.exists()) {
-      console.log(`⚠️ No active command found for: ${action}, skipping stop.`);
+    const activeCommandRef = doc(activeCommandsCol, action);
+    const stopCommandRef = doc(stopCommandsCol, `stop_${action}`);
+
+    const existingActive = await getDoc(activeCommandRef);
+    if (!existingActive.exists()) {
+      console.log(`⚠️ No active command found for ${action}, skip stopping.`);
       return;
     }
 
-    // ✅ Step 2: Prevent duplicate stop commands
-    const existingStopCommand = await getDoc(stopCommandRef);
-    if (existingStopCommand.exists()) {
-      console.log(`⚠️ Stop command already exists: ${stopCommandName}, avoiding duplicate.`);
+    const existingStop = await getDoc(stopCommandRef);
+    if (existingStop.exists()) {
+      console.log(`⚠️ Stop command already sent for ${action}`);
       return;
     }
 
-    console.log(`🚀 Stopping command: ${action}`);
-
-    // ✅ Step 3: Store stop command in stop_commands
     await setDoc(stopCommandRef, {
+      action,
       status: "stop",
-      action: stopCommandName,
       timestamp: new Date(),
     });
 
-    console.log(`✅ Stop Command Sent: ${stopCommandName}`);
-
-    // ✅ Step 4: Remove the active command only after stop command is added
+    console.log(`✅ Stop Command Sent: stop_${action}`);
     await deleteDoc(activeCommandRef);
     console.log(`🗑️ Active Command Removed: ${action}`);
 
+    // ⏲️ Schedule deletion of stop command after 10 seconds
+    setTimeout(async () => {
+      try {
+        await deleteDoc(stopCommandRef);
+        console.log(`🧹 Stop Command Auto-Deleted: stop_${action}`);
+      } catch (error) {
+        console.error("❌ Failed to auto-delete stop command:", error);
+      }
+    }, 10000); // 10 seconds
+
   } catch (error) {
-    console.error("❌ Error sending stop command:", error);
+    console.error("❌ Error in sendStopCommand:", error);
   }
 };
