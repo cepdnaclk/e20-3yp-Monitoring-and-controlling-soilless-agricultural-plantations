@@ -316,15 +316,15 @@ export default function DeviceScreen() {
       console.log('✅ stop_commands created at:', stopRef.path);
     }
     // Step 7: Ensure control_settings exists
-const controlRef = doc(db, `users/${userId}/deviceGroups/${groupId}/control_settings`, 'init');
+const controlRef = doc(db, `users/${userId}/deviceGroups/${groupId}/control_settings`, '1');
 const controlSnap = await getDoc(controlRef);
 if (!controlSnap.exists()) {
   await setDoc(controlRef, {
-    threshold_ph: 7,
-    threshold_ec: 2.0,
-    threshold_moisture: 35,
-    mode: 'auto',
-    createdAt: serverTimestamp()
+    pHTarget: 12,
+    ecTarget: 7,
+    lightTarget: 12999,
+    soilMoistureTarget: 32,
+    timestamp: serverTimestamp()
   });
   console.log('✅ control_settings created at:', controlRef.path);
 }

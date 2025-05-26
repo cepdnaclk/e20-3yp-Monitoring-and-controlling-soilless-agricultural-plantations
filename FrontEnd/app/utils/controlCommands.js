@@ -30,8 +30,7 @@ export const sendControlCommand = async (userId, groupId, action, value) => {
   }
 };
 
-
-// ✅ Send stop command (prevents duplicates)
+// ✅ Send stop command (and delete it after 10s)
 export const sendStopCommand = async (userId, groupId, action) => {
   try {
     if (!userId || !groupId || !action) {
@@ -66,6 +65,17 @@ export const sendStopCommand = async (userId, groupId, action) => {
     console.log(`✅ Stop Command Sent: stop_${action}`);
     await deleteDoc(activeCommandRef);
     console.log(`🗑️ Active Command Removed: ${action}`);
+
+    // ⏲️ Schedule deletion of stop command after 10 seconds
+    setTimeout(async () => {
+      try {
+        await deleteDoc(stopCommandRef);
+        console.log(`🧹 Stop Command Auto-Deleted: stop_${action}`);
+      } catch (error) {
+        console.error("❌ Failed to auto-delete stop command:", error);
+      }
+    }, 10000); // 10 seconds
+
   } catch (error) {
     console.error("❌ Error in sendStopCommand:", error);
   }
