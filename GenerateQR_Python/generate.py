@@ -3,13 +3,13 @@ import json
 
 # Example device data
 device_data = {
-    "id": "gsmmodule123",
-    "name": "Controller Unit",
-    "type": "Environmental Sensor",
+    "id": "6432",
+    "name": "Water sensor Unit",
+    "type": "Controller",
     "status": "Inactive",
     "connectivity": "WiFi",
     "power": "15",
-    "icon": "settings",
+    "icon": "sensors", #settings,sensors
     "description": "An intelligent controller that automates water and nutrient delivery, optimizing resource usage and plant health.",
     "imageUrl": "https://res.cloudinary.com/dnqs4ihau/image/upload/v1740202616/device3_wpfoi6.jpg"
 }
@@ -26,7 +26,7 @@ qr.make(fit=True)
 qr_image = qr.make_image(fill="black", back_color="white")
 
 # Save the QR Code as an image file
-qr_filename = "device_gsm.png"
+qr_filename = "water_sensor.png"
 qr_image.save(qr_filename)
 
 print(f" QR Code saved as '{qr_filename}'")
