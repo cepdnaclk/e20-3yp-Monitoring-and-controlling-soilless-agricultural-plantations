@@ -13,8 +13,6 @@ export default function DashboardScreen({ navigation, route, userId, onGroupChan
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [chartData, setChartData] = useState(null);
   const [historyChartData, setHistoryChartData] = useState(null);
-  const screenWidth = Dimensions.get('window').width;
-
 
   useEffect(() => {
     const fetchGroups = async () => {
@@ -123,116 +121,42 @@ export default function DashboardScreen({ navigation, route, userId, onGroupChan
   return (
     <ScrollView contentContainerStyle={styles.container}>
       {historyChartData && (
-  <View style={{ marginBottom: 20 }}>
-    <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10 }}>
-      Hourly Temperature & Humidity
-    </Text>
-    
-    <ScrollView
-      horizontal
-      pagingEnabled
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ width: screenWidth * 2 }}
-      style={{ height: 280 }} // Increase height slightly
-    >
-      {/* Temperature Chart */}
-      <View style={{ 
-        width: Dimensions.get('window').width - 40,
-        paddingHorizontal: 10,
-        alignItems: 'center'
-      }}>
-        <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 5 }}>🌡 Temperature (°C)</Text>
-        <LineChart
-          data={{
-            labels: historyChartData.labels.map(label => 
-              label.length > 5 ? label.substring(0, 5) : label
-            ),
-            datasets: [historyChartData.datasets[0]],
+        <View style={{ marginBottom: 20 }}>
+          <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10 }}>
+            Hourly Temperature & Humidity
+          </Text>
+          <LineChart
+            data={historyChartData}
+            width={Dimensions.get('window').width - 40}
+            height={220}
+            chartConfig={{
+              backgroundGradientFrom: '#f0f0f0',
+              backgroundGradientTo: '#f0f0f0',
+              decimalPlaces: 1,
+              color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+              labelColor: () => '#333',
+              style: { borderRadius: 10 },
+            }}
+            style={{ borderRadius: 16 }}
+          />
+        </View>
+      )}
+
+      <View style={styles.groupPickerContainer}>
+        <Text style={styles.title}>Select Group:</Text>
+        <Picker
+          selectedValue={selectedGroup}
+          onValueChange={value => {
+            setSelectedGroup(value);
+            if (onGroupChange) onGroupChange(value);
           }}
-          width={Dimensions.get('window').width - 80} // More padding
-          height={220}
-          chartConfig={{
-            backgroundGradientFrom: '#f0f0f0',
-            backgroundGradientTo: '#f0f0f0',
-            decimalPlaces: 1,
-            color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-            labelColor: () => '#333',
-            style: { 
-              borderRadius: 10,
-              paddingRight: 40, // Increase right padding
-            },
-            propsForLabels: {
-              fontSize: 10,
-              paddingLeft: 0,
-              paddingRight: 10,
-              rotation: 0,
-            },
-            propsForBackgroundLines: {
-              strokeDasharray: '',
-            },
-          }}
-          bezier
-          style={{ 
-            borderRadius: 16,
-            marginVertical: 8,
-          }}
-          withHorizontalLabels={true}
-          withVerticalLabels={true}
-          fromZero={false}
-        />
+          style={styles.picker}
+        >
+          {groups.map(id => (
+            <Picker.Item label={id} value={id} key={id} />
+          ))}
+        </Picker>
       </View>
-
-      {/* Humidity Chart */}
-      <View style={{ 
-        width: Dimensions.get('window').width - 40,
-        paddingHorizontal: 10,
-        alignItems: 'center'
-      }}>
-        <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 5 }}>💧 Humidity (%)</Text>
-        <LineChart
-          data={{
-            labels: historyChartData.labels.map(label => 
-              label.length > 5 ? label.substring(0, 5) : label
-            ),
-            datasets: [historyChartData.datasets[1]],
-          }}
-          width={Dimensions.get('window').width - 80} // More padding
-          height={220}
-          chartConfig={{
-            backgroundGradientFrom: '#f0f0f0',
-            backgroundGradientTo: '#f0f0f0',
-            decimalPlaces: 1,
-            color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-            labelColor: () => '#333',
-            style: { 
-              borderRadius: 16,
-              paddingRight: 40, // Increase right padding
-            },
-            propsForLabels: {
-              fontSize: 10,
-              paddingLeft: 0,
-              paddingRight: 10,
-              rotation: 0,
-            },
-            propsForBackgroundLines: {
-              strokeDasharray: '',
-            },
-          }}
-          bezier
-          style={{ 
-            borderRadius: 16,
-            marginVertical: 8,
-          }}
-          withHorizontalLabels={true}
-          withVerticalLabels={true}
-          fromZero={false}
-        />
-      </View>
-    </ScrollView>
-  </View>
-)}
-
-
 
       <View style={styles.gridContainer}>
         {[
