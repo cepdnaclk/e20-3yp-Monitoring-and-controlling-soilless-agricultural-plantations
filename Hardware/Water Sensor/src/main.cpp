@@ -95,7 +95,7 @@ void publishSensorData() {
 
   String water_level = get_level_of_water(waterLevel);
   String payload = "{\"water_level\": \"" + water_level + "\"" +
-                   ", \"ph\": " + String(PH, 2) + ", temp: " + String(temp) + "}";
+                   ", \"ph\": " + String(PH, 2) + ", temperature: " + String(temp) + "}";
 
 
   Serial.print("Publishing Sensor Data: ");
