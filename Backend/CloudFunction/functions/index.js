@@ -4,7 +4,7 @@ const {setGlobalOptions} = require("firebase-functions/v2/options");
 const {
   onDocumentCreated,
   onDocumentDeleted,
-} =require("firebase-functions/v2/firestore");
+} = require("firebase-functions/v2/firestore");
 const admin = require("firebase-admin");
 const mqtt = require("mqtt");
 
@@ -32,8 +32,76 @@ const mqttClient = mqtt.connect(mqttOptions);
 
 mqttClient.on("connect", () => {
   console.log("✅ Connected to MQTT Broker");
+
+  initializeSubscriptions()
+      .then(() => console.log(
+          "✅ MQTT subscriptions initialized after connection",
+      ))
+      .catch((err) => console.error(
+          "❌ Failed to initialize subscriptions:",
+          err.message,
+      ));
 });
 
+
+/**
+ * Initializes MQTT subscriptions for all existing devices in Firestore
+ * @async
+ * @function initializeSubscriptions
+ * @return {Promise<void>} Resolves when all subscriptions are complete
+ * @throws {Error} If any part of the subscription process fails
+ *
+ * @example
+ * // Call this when your backend starts
+ * initializeSubscriptions()
+ *   .then(() => console.log("Subscriptions initialized"))
+ *   .catch(err => console.error("Initialization failed", err));
+ */
+async function initializeSubscriptions() {
+  try {
+    console.log("⏳ Initializing MQTT subscriptions for existing devices...");
+
+    // Get all users
+    const usersSnapshot = await db.collection("users").get();
+
+    for (const userDoc of usersSnapshot.docs) {
+      const userId = userDoc.id;
+
+      // Get all device groups for this user
+      const groupsSnapshot = await userDoc.ref.collection("deviceGroups").get();
+
+      for (const groupDoc of groupsSnapshot.docs) {
+        const groupId = groupDoc.id;
+
+        // Get all devices in this group
+        const devicesSnapshot = await groupDoc.ref.collection("devices").get();
+
+        for (const deviceDoc of devicesSnapshot.docs) {
+          const deviceId = deviceDoc.id;
+          const sensorTopic = `${userId}/${groupId}/${deviceId}/sensor`;
+
+          // Subscribe to the topic
+          mqttClient.subscribe(sensorTopic, {qos: 1}, (err) => {
+            if (!err) {
+              console.log(`✅ Initial subscription to topic: ${sensorTopic}`);
+            } else {
+              console.error(
+                  `❌ Initial subscription error for ${sensorTopic}:`,
+                  err.message,
+              );
+            }
+          });
+        }
+      }
+    }
+
+    console.log("✅ Finished initializing MQTT subscriptions");
+  } catch (error) {
+    console.error("❌ Error initializing subscriptions:", error.message);
+  }
+}
+
+// subscribe to a new device when scanned QR code
 exports.subscribeToNewDevice = onDocumentCreated(
     "users/{userId}/deviceGroups/{groupId}/devices/{deviceId}",
     async (event) => {
@@ -47,9 +115,10 @@ exports.subscribeToNewDevice = onDocumentCreated(
           console.error(`❌ Subscription error in ${sensorTopic}:`, err.message);
         }
       });
-    });
+    },
+);
 
-
+// unsubscribe from a device when removed
 exports.unsubscribeFromRemovedDevice = onDocumentDeleted(
     "users/{userId}/deviceGroups/{groupId}/devices/{deviceId}",
     async (event) => {
@@ -63,8 +132,8 @@ exports.unsubscribeFromRemovedDevice = onDocumentDeleted(
           console.error(`❌ Unsubscription error ${sensorTopic}:`, err.message);
         }
       });
-    });
-
+    },
+);
 
 /**
  * HTTPS Cloud Function to get userId for a given deviceId.
@@ -117,7 +186,6 @@ exports.getUserId = onRequest(async (req, res) => {
   }
 });
 
-
 // Handle incoming MQTT messages and store them in Firestore
 mqttClient.on("message", async (topic, message) => {
   try {
@@ -130,6 +198,21 @@ mqttClient.on("message", async (topic, message) => {
     );
     const data = JSON.parse(message.toString());
 
+    // Get current date and hour for historical path
+    const now = new Date();
+    const timestampReadable = now.toLocaleString("en-US", {
+      timeZone: "Asia/Colombo", // Optional: ensure consistent timezone
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+      hour: "numeric",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+    });
+
+    const safeTimestamp = timestampReadable.replace(/[^a-zA-Z0-9]/g, "_");
+
     const sensorData = {
       timestamp: admin.firestore.FieldValue.serverTimestamp(),
       ...(data.water_level !== undefined && {water_level: data.water_level}),
@@ -137,24 +220,47 @@ mqttClient.on("message", async (topic, message) => {
       ...(data.ph !== undefined && {ph: data.ph}),
       ...(data.temperature !== undefined && {temperature: data.temperature}),
       ...(data.humidity !== undefined && {humidity: data.humidity}),
-      ...(data.light_intensity !== undefined &&
-        {light_intensity: data.light_intensity}),
+      ...(data.light_intensity !== undefined && {
+        light_intensity: data.light_intensity,
+      }),
     };
 
-    const targetPath = `users/${userId}/sensor_data/1`;
+    // Original path (single document with merged data)
+    const targetPath = `/users/${userId}/deviceGroups/${groupId}/sensor_data/1`;
     console.log(`Storing data in Firestore at ${targetPath}`, sensorData);
 
-    await db.doc(targetPath).set(sensorData, {
+    // Historical path (new document for each message)
+    const historyPath =
+    `users/${userId}/deviceGroups/${groupId}/sensor_history/${safeTimestamp}`;
+
+    console.log(
+        `Storing historical data in Firestore at ${historyPath}`, sensorData,
+    );
+
+    // Use batch to write both documents atomically
+    const batch = db.batch();
+
+    // Update the existing document
+    batch.set(db.doc(targetPath), sensorData, {
       merge: true,
       ignoreUndefinedProperties: true,
     });
 
-    console.log(`✅ Data stored in Firestore at ${targetPath}`, sensorData);
+    // Create new historical document
+    batch.set(db.doc(historyPath), sensorData, {
+      ignoreUndefinedProperties: true,
+    });
+
+    await batch.commit();
+
+    console.log(
+        `✅ Data stored in Firestore at both ${targetPath} and ${historyPath}`,
+        sensorData,
+    );
   } catch (error) {
     console.error("❌ Error storing data:", error.message);
   }
 });
-
 
 /**
  * Publishes an MQTT message to the topic "test/topic".
@@ -191,7 +297,8 @@ exports.turnPumpOn = onDocumentCreated(
         console.log(`🟢 Document "${docId}" created. User ID: ${userId}`);
         sendMQTTMessage(topic, qos, message);
       }
-    });
+    },
+);
 
 /**
  * Cloud Function that triggers when a document is deleted.
@@ -229,5 +336,5 @@ exports.turnPumpOff = onDocumentDeleted(
           console.log("Other active pH commands still exist. Keeping pump ON.");
         }
       }
-    });
-
+    },
+);

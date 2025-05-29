@@ -3,11 +3,51 @@
   "description": "Cloud Functions for Firebase",
   "scripts": {
     "lint": "eslint .",
+    "lint:fix": "eslint . --ext .js --fix",
     "serve": "firebase emulators:start --only functions",
     "shell": "firebase functions:shell",
     "start": "npm run shell",
     "deploy": "firebase deploy --only functions",
-    "logs": "firebase functions:log"
+    "logs": "firebase functions:log",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/__tests__/**/*.js",
+      "**/?(*.)+(spec|test).js"
+    ],
+    "collectCoverageFrom": [
+      "index.js",
+      "!node_modules/**"
+    ],
+    "coverageReporters": [
+      "text",
+      "lcov",
+      "html"
+    ],
+    "verbose": true,
+    "clearMocks": true
+  },
+  "eslintConfig": {
+    "rules": {
+      "quotes": [
+        "error",
+        "double"
+      ],
+      "max-len": [
+        "error",
+        {
+          "code": 80
+        }
+      ],
+      "object-curly-spacing": [
+        "error",
+        "never"
+      ]
+    }
   },
   "engines": {
     "node": "22"
@@ -20,9 +60,16 @@
     "mqtt": "^5.10.3"
   },
   "devDependencies": {
-    "eslint": "^8.15.0",
+    "@firebase/testing": "^0.20.11",
+    "@jest/globals": "^29.7.0",
+    "@types/jest": "^29.5.14",
+    "eslint": "^8.57.1",
     "eslint-config-google": "^0.14.0",
-    "firebase-functions-test": "^3.1.0"
+    "eslint-config-prettier": "^10.1.5",
+    "eslint-plugin-prettier": "^5.4.0",
+    "firebase-functions-test": "^3.4.1",
+    "jest": "^29.7.0",
+    "prettier": "^3.5.3"
   },
   "private": true
 }

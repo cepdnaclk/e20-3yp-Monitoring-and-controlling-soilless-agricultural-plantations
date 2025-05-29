@@ -3,9 +3,13 @@
 #include <WiFiClientSecure.h>
 
 
+// Include necessary libraries
+#include "connect_to_mqtt.h" //header file to connect to MQTT broker
+#include "temperature_sensor.h" //header file to read temperature sensor data
+
 // WiFi credentials
-const char* ssid = "Eng-Student";
-const char* password = "3nG5tuDt";
+const char* ssid = "Devin Hasnaka";
+const char* password = "12345678";
 
 // MQTT credentials
 const char* mqttServer = "23162742be094f829a5b3f6f29eb5dd6.s1.eu.hivemq.cloud";
@@ -13,72 +17,46 @@ const int mqttPort = 8883;
 const char* mqttUser = "Tharusha";
 const char* mqttPassword = "Tharusha2001";
 
-// const char* mqttServer = "4cb394bbc8284672b38e8d39dc842c9f.s1.eu.hivemq.cloud";
-// const int mqttPort = 8883;
-// const char* mqttUser = "Devin";
-// const char* mqttPassword = "Devin2001";
-
-
-// Topics
+// MQTT Topics
 const char* controlTopic = "test/topic";     // Receive control updates
 const char* sensorTopic = "test/sensor";     // Send sensor data
 
 // Secure WiFi client
 WiFiClientSecure espClient;
-PubSubClient client(espClient);
+PubSubClient client(espClient); 
+
+//sensor pins
+#define tempSensor 15
+#define WaterLevel 33
+#define PHsensor 34
+
+//indicator LED pin
+#define wifi_indicator_pin 2 
+#define MQTT_indicator_pin 5
+
+// Initialize OneWire and DallasTemperature for DS18B20
+
 
 // Timer variables
 unsigned long lastPublishTime = 0;
 const long publishInterval = 5000;  // Publish every 5 minutes
 
-//sensor pins
-#define MOTOR 2
-#define WaterLevel 34
-#define PHsensor 33
+// // Function to connect to MQTT
+// void connectToMQTT() {
+//   while (!client.connected()) {
+//     Serial.println("Connecting to MQTT...");
+//     if (client.connect("ESP32Client", mqttUser, mqttPassword)) {
+//       Serial.println("Connected to HiveMQ");
+//       client.subscribe(controlTopic);  // Subscribe to control topic
+//     } else {
+//       Serial.print("MQTT Connection Failed, State: ");
+//       Serial.println(client.state());
+//       delay(2000);
+//     }
+//   }
+// }
 
-int pump_on = 0;
-// Forward declaration of Water_remove function
-int Water_remove(float waterLevel);
 
-// Callback for incoming MQTT messages
-void callback(char* topic, byte* payload, unsigned int length) {
-  Serial.print("Message received on topic: ");
-  Serial.println(topic);
-
-  String message = "";
-  for (int i = 0; i < length; i++) {
-    message += (char)payload[i];
-  }
-
-  Serial.println("Message: " + message);
-
-  if (String(topic) == controlTopic) {
-    Serial.println("Processing Firestore update...");
-    // Parse JSON message for pump control
-    if (message.indexOf("\"pump\":\"ON\"") > 0) {
-      digitalWrite(MOTOR, HIGH);
-      Serial.println("Pump ON");
-    } else if (message.indexOf("\"pump\":\"OFF\"") > 0) {
-      digitalWrite(MOTOR, LOW);
-      Serial.println("Pump OFF");
-    }
-  }
-}
-
-// Function to connect to MQTT
-void connectToMQTT() {
-  while (!client.connected()) {
-    Serial.println("Connecting to MQTT...");
-    if (client.connect("ESP32Client", mqttUser, mqttPassword)) {
-      Serial.println("Connected to HiveMQ");
-      client.subscribe(controlTopic);  // Subscribe to control topic
-    } else {
-      Serial.print("MQTT Connection Failed, State: ");
-      Serial.println(client.state());
-      delay(2000);
-    }
-  }
-}
 
 String get_level_of_water(float waterLevel){
   if(waterLevel > 500){
@@ -111,30 +89,18 @@ void publishSensorData() {
 
   float waterLevel = analogRead(WaterLevel);
   int raw = analogRead(PHsensor);
+  float temp = readTemperatureSensor(tempSensor); // Get temperature from DS18B20
   float volatge = raw * (3.3 / 4095.0);
   float PH = 3.5 * volatge + 4;
 
   String water_level = get_level_of_water(waterLevel);
   String payload = "{\"water_level\": \"" + water_level + "\"" +
-                   ", \"ph\": " + String(PH, 2) + "}";
-  if((waterLevel > 500) && (pump_on == 0)){
-    pump_on = Water_remove(waterLevel);
-  }
-  if((waterLevel < 300) && (pump_on == 1)){
-    digitalWrite(MOTOR, LOW);
-    String controlsignal = "{\"pump\":\"OFF\"}";
-    if(client.publish(controlTopic, controlsignal.c_str())){
-      Serial.println("Water Level is low and Pump is OFF");
-      pump_on = 0;
-    }
-    else{
-      Serial.println("publish failed - Water Level is low and cannot OFF the pump");
-    }
-  }
+                   ", \"ph\": " + String(PH, 2) + ", temp: " + String(temp) + "}";
 
 
   Serial.print("Publishing Sensor Data: ");
   Serial.println(payload);
+  Serial.println(temp);
 
   if (client.publish(sensorTopic, payload.c_str())) {
     Serial.println("Data Published Successfully");
@@ -150,23 +116,10 @@ void publishSensorData() {
   //delay(3000);  // Delay to prevent flooding MQTT broker
 }
 
-int Water_remove(float waterLevel){
-    digitalWrite(MOTOR, HIGH);
-    String controlsignal = "{\"pump\":\"ON\"}";
-    if(client.publish(controlTopic, controlsignal.c_str())){
-      Serial.println("Water Level is high and Pump is ON");
-      return 1;
-    }
-    else{
-      Serial.println("publish failed - Water Level is high and cannot ON the pump");
-      return 0;
-    }
-
-}
 
 void setup() {
-  Serial.begin(9600);
-  pinMode(MOTOR, OUTPUT);
+
+  Serial.begin(115200);
 
   WiFi.begin(ssid, password);
   Serial.print("Connecting to WiFi");
@@ -178,14 +131,15 @@ void setup() {
 
   espClient.setInsecure();  // Allow SSL without certificates
   client.setServer(mqttServer, mqttPort);
-  client.setCallback(callback);
-  connectToMQTT();
+  connectToMQTT(mqttServer, mqttPort, mqttUser, mqttPassword, client, controlTopic);
+
+  // Initialize OneWire and DallasTemperature
 
 }
 
 void loop() {
   if (!client.connected()) {
-    connectToMQTT();
+    connectToMQTT(mqttServer, mqttPort, mqttUser, mqttPassword, client, controlTopic);
   }
   client.loop(); // Keep MQTT connection active
 
