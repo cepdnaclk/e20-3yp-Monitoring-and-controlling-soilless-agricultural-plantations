@@ -60,38 +60,78 @@ export default function DashboardScreen({ navigation, route, userId, onGroupChan
     );
 
     const unsubscribeHistory = onSnapshot(historyQuery, snapshot => {
-      const historyData = snapshot.docs
-        .filter(doc => doc.data().timestamp)
-        .map(doc => {
-          const d = doc.data();
-          return {
-            temperature: d.temperature || 0,
-            humidity: d.humidity || 0,
-            timestamp: d.timestamp.toDate(),
-          };
-        });
-
-      setHistoryChartData({
-        labels: historyData.map(d =>
-          d.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        ),
-        datasets: [
-          {
-            data: historyData.map(d => d.temperature),
-            color: () => COLORS.green,
-            strokeWidth: 2,
-            label: 'Temperature'
-          },
-          {
-            data: historyData.map(d => d.humidity),
-            color: () => 'rgba(0, 0, 255, 1)',
-            strokeWidth: 2,
-            label: 'Humidity'
-          }
-        ],
-        legend: ['Temperature', 'Humidity']
-      });
+  const historyData = snapshot.docs
+    .filter(doc => doc.data().timestamp)
+    .map(doc => {
+      const d = doc.data();
+      return {
+        temperature: d.temperature || 0,
+        humidity: d.humidity || 0,
+        ph: d.ph || 0,
+        water_level: d.water_level || 0,
+        timestamp: d.timestamp.toDate(),
+      };
     });
+
+  if (historyData.length === 0) {
+    // Set dummy flatline data if no history data
+    const dummyLabels = Array(12).fill('').map((_, i) => `${i}:00`);
+    const dummyValues = Array(12).fill(0);
+    setHistoryChartData({
+      labels: dummyLabels,
+      datasets: [
+        {
+          data: dummyValues,
+          color: () => COLORS.green,
+          strokeWidth: 2,
+          label: 'Temperature'
+        },
+        {
+          data: dummyValues,
+          color: () => 'rgba(0, 0, 255, 1)',
+          strokeWidth: 2,
+          label: 'Humidity'
+        },
+        {
+          data: dummyValues,
+          color: () => 'rgb(120, 43, 43)',
+          strokeWidth: 2,
+          label: 'pH Level'
+        }
+      ],
+      legend: ['Temperature', 'Humidity', 'pH Level']
+    });
+    return;
+  }
+
+  setHistoryChartData({
+    labels: historyData.map(d =>
+      d.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    ),
+    datasets: [
+      {
+        data: historyData.map(d => d.temperature),
+        color: () => COLORS.green,
+        strokeWidth: 2,
+        label: 'Temperature'
+      },
+      {
+        data: historyData.map(d => d.humidity),
+        color: () => 'rgba(0, 0, 255, 1)',
+        strokeWidth: 2,
+        label: 'Humidity'
+      },
+      {
+        data: historyData.map(d => d.ph),
+        color: () => 'rgb(120, 43, 43)',
+        strokeWidth: 2,
+        label: 'pH Level'
+      }
+    ],
+    legend: ['Temperature', 'Humidity','pH Level']
+  });
+});
+
 
     return () => {
       unsubscribeRealtime();
@@ -122,6 +162,22 @@ export default function DashboardScreen({ navigation, route, userId, onGroupChan
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      <View style={styles.groupPickerContainer}>
+  <Text style={styles.title}>Select Device Group</Text>
+  <Picker
+    selectedValue={selectedGroup}
+    onValueChange={(itemValue) => {
+      setSelectedGroup(itemValue);
+      if (onGroupChange) onGroupChange(itemValue);
+    }}
+    style={styles.picker}
+  >
+    {groups.map((groupId, index) => (
+      <Picker.Item label={groupId} value={groupId} key={index} />
+    ))}
+  </Picker>
+</View>
+
       {historyChartData && (
   <View style={{ marginBottom: 20 }}>
     <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10 }}>
@@ -132,7 +188,7 @@ export default function DashboardScreen({ navigation, route, userId, onGroupChan
       horizontal
       pagingEnabled
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ width: screenWidth * 2 }}
+      contentContainerStyle={{ width: screenWidth * 3 }}
       style={{ height: 280 }} // Increase height slightly
     >
       {/* Temperature Chart */}
@@ -148,6 +204,53 @@ export default function DashboardScreen({ navigation, route, userId, onGroupChan
               label.length > 5 ? label.substring(0, 5) : label
             ),
             datasets: [historyChartData.datasets[0]],
+          }}
+          width={Dimensions.get('window').width - 80} // More padding
+          height={220}
+          chartConfig={{
+            backgroundGradientFrom: '#f0f0f0',
+            backgroundGradientTo: '#f0f0f0',
+            decimalPlaces: 1,
+            color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+            labelColor: () => '#333',
+            style: { 
+              borderRadius: 10,
+              paddingRight: 40, // Increase right padding
+            },
+            propsForLabels: {
+              fontSize: 10,
+              paddingLeft: 0,
+              paddingRight: 10,
+              rotation: 0,
+            },
+            propsForBackgroundLines: {
+              strokeDasharray: '',
+            },
+          }}
+          bezier
+          style={{ 
+            borderRadius: 16,
+            marginVertical: 8,
+          }}
+          withHorizontalLabels={true}
+          withVerticalLabels={true}
+          fromZero={false}
+        />
+      </View>
+
+      {/* Ph Chart */}
+      <View style={{ 
+        width: Dimensions.get('window').width - 40,
+        paddingHorizontal: 10,
+        alignItems: 'center'
+      }}>
+        <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 5 }}>ph Level</Text>
+        <LineChart
+          data={{
+            labels: historyChartData.labels.map(label => 
+              label.length > 5 ? label.substring(0, 5) : label
+            ),
+            datasets: [historyChartData.datasets[2]],
           }}
           width={Dimensions.get('window').width - 80} // More padding
           height={220}
