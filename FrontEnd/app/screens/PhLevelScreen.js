@@ -1,86 +1,106 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, StyleSheet, Dimensions, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Dimensions, ActivityIndicator } from 'react-native';
 import { LineChart } from 'react-native-chart-kit';
 import { Button } from 'react-native-paper';
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { db } from "../firebaseConfig"; // Firestore reference
+import { doc, getDoc, setDoc, collection, query, orderBy, limit, onSnapshot } from "firebase/firestore";
+import { db } from "../firebaseConfig";
 import COLORS from '../config/colors';
+
+const screenWidth = Dimensions.get("window").width;
 
 export default function PhLevelScreen({ navigation, route }) {
   const { userId, groupId } = route.params;
-  // ✅ Get userId from navigation params
+
   const [chartData, setChartData] = useState(null);
+  const [currentPhLevel, setCurrentPhLevel] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [phLevel, setPhLevel] = useState("6.8"); // Temporary adjusting value
-  const [currentPhLevel, setCurrentPhLevel] = useState("6.8"); // Actual set value
+  const [phLevel, setPhLevel] = useState(""); // Input field
   const [isSetting, setIsSetting] = useState(false);
 
-  // ✅ Fetch user-specific pH control settings from Firestore
+  // 🔄 Real-time pH history listener
   useEffect(() => {
-    if (!userId) {
-      console.error("❌ No User ID provided!");
-      return;
-    }
+    if (!userId || !groupId) return;
 
-    const fetchPhLevel = async () => {
+    const q = query(
+      collection(db, `users/${userId}/deviceGroups/${groupId}/sensor_history`),
+      orderBy("timestamp", "desc"),
+      limit(24)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs
+        .filter(doc => doc.data().timestamp)
+        .map(doc => {
+          const d = doc.data();
+          return {
+            ph: d.ph || 0,
+            timestamp: d.timestamp.toDate()
+          };
+        })
+        .reverse(); // Oldest first
+
+      if (data.length > 0) {
+        setCurrentPhLevel(data[data.length - 1].ph);
+      }
+
+      setChartData({
+  labels: data.map((d, index) =>
+    index % 6 === 0
+      ? d.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      : ""
+  ),
+  datasets: [
+    {
+      data: data.map(d => d.ph),
+      color: (opacity = 1) => `rgba(75, 192, 192, ${opacity})`,
+      strokeWidth: 2
+    }
+  ],
+  legend: ["pH Level"]
+});
+
+
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [userId, groupId]);
+
+  // 🔄 Get current pH target for manual override field
+  useEffect(() => {
+    if (!userId || !groupId) return;
+
+    const fetchPhTarget = async () => {
       try {
         const docRef = doc(db, `users/${userId}/deviceGroups/${groupId}/control_settings`, "1");
         const docSnap = await getDoc(docRef);
 
-
-        
-
         if (docSnap.exists()) {
           const data = docSnap.data();
-          console.log("📡 Fetched User-Specific pH Target:", data.pHTarget);
           setPhLevel(data.pHTarget.toString());
-          setCurrentPhLevel(data.pHTarget.toString());
         } else {
-          console.log("❌ No pH target found in Firestore. Using default values");
+          setPhLevel("6.8"); // Default if missing
         }
       } catch (error) {
-        console.error("🔥 Firestore Error fetching pH Target:", error);
+        console.error("❌ Firestore error loading pH target:", error);
       }
     };
 
-    fetchPhLevel();
-  }, [userId]);
+    fetchPhTarget();
+  }, [userId, groupId]);
 
-  // ✅ Simulated historical pH level data (Replace with Firestore query later)
-  useEffect(() => {
-    setTimeout(() => {
-      setChartData({
-        labels: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
-        datasets: [
-          { 
-            data: [6.8, 6.9, 6.8, 6.7, 6.8, 6.9, 6.8], 
-            label: "pH Level",
-            color: (opacity = 1) => `rgba(75, 192, 192, ${opacity * 0.6})`
-          }
-        ],
-      });
-      setLoading(false);
-    }, 1000);
-  }, []);
-
-  // ✅ Update Firestore with new pH level for the user
+  // 🔘 Manually set target pH level in control_settings
   const handleSetValue = async () => {
-    if (!userId) {
-      console.error("❌ No User ID provided!");
-      return;
-    }
+    if (!userId || !phLevel) return;
 
     setIsSetting(true);
 
     try {
       const docRef = doc(db, `users/${userId}/deviceGroups/${groupId}/control_settings`, "1");
       await setDoc(docRef, { pHTarget: parseFloat(phLevel) }, { merge: true });
-
-
-      console.log("✅ User-Specific pH Target updated in Firestore:", phLevel);
-      setCurrentPhLevel(phLevel);
+      console.log("✅ Updated pH Target:", phLevel);
     } catch (error) {
-      console.error("❌ Firestore Error updating pH Target:", error);
+      console.error("❌ Error updating pH target:", error);
     }
 
     setIsSetting(false);
@@ -88,47 +108,51 @@ export default function PhLevelScreen({ navigation, route }) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>pH Level Adjustment</Text>
+      <Text style={styles.title}>pH Level Monitoring</Text>
 
       {loading ? (
         <ActivityIndicator size="large" color="#3498db" />
-      ) : (
+      ) : chartData ? (
         <LineChart
           data={chartData}
-          width={Dimensions.get("window").width - 40}
+          width={screenWidth - 40}
           height={220}
           yAxisSuffix=""
+          yAxisInterval={1}
           chartConfig={{
+            backgroundColor: "#f5f5f5",
             backgroundGradientFrom: "#fff",
             backgroundGradientTo: "#fff",
             decimalPlaces: 1,
             color: (opacity = 1) => `rgba(75, 192, 192, ${opacity})`,
             labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-            style: { borderRadius: 16 },
+            style: { borderRadius: 10 },
+            propsForDots: { r: "5", strokeWidth: "2", stroke: "#4CAF50" },
           }}
           bezier
-          style={{ marginVertical: 8, borderRadius: 16 }}
+          style={{ marginVertical: 10, borderRadius: 10 }}
         />
-      )}
+      ) : null}
 
-      {/* Display Current pH Level */}
+      {/* 📊 Display current pH from sensor */}
       <View style={styles.currentValueContainer}>
-        <Text style={styles.currentValueLabel}>Current pH Level:</Text>
-        <Text style={styles.currentValueText}>{currentPhLevel}</Text>
+        <Text style={styles.currentValueLabel}>Current pH:</Text>
+        <Text style={styles.currentValueText}>
+          {currentPhLevel !== null ? currentPhLevel.toFixed(2) : "N/A"}
+        </Text>
       </View>
 
-      {/* Manual Input for pH Level */}
+      {/* 🎯 Target pH input */}
       <TextInput
         style={styles.input}
         keyboardType="numeric"
         value={phLevel}
         onChangeText={setPhLevel}
-        placeholder="Enter new pH level"
+        placeholder="Enter target pH level"
       />
 
-      {/* Set Value Button */}
       <Button mode="contained" onPress={handleSetValue} disabled={isSetting}>
-        {isSetting ? "Setting..." : `Set to ${phLevel}`}
+        {isSetting ? "Setting..." : `Set Target to ${phLevel}`}
       </Button>
     </View>
   );
@@ -137,12 +161,12 @@ export default function PhLevelScreen({ navigation, route }) {
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, backgroundColor: COLORS.lightGreen || "#E8F5E9" },
   title: { fontSize: 24, fontWeight: 'bold', marginBottom: 10 },
-  currentValueContainer: { 
-    backgroundColor: "#dff0d8", 
-    padding: 10, 
-    borderRadius: 8, 
-    alignItems: "center", 
-    marginBottom: 10 
+  currentValueContainer: {
+    backgroundColor: "#dff0d8",
+    padding: 10,
+    borderRadius: 8,
+    alignItems: "center",
+    marginVertical: 20
   },
   currentValueLabel: { fontSize: 16, fontWeight: "bold", color: "#2c662d" },
   currentValueText: { fontSize: 24, fontWeight: "bold", color: "#2c662d" },

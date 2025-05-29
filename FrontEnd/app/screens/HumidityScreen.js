@@ -39,9 +39,12 @@ export default function HumidityScreen({ route }) {
       }
 
       setChartData({
-        labels: data.map(d =>
-          d.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        ),
+        labels: data.map((d, index) =>
+  index % 6 === 0
+    ? d.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    : ""
+),
+
         datasets: [
           {
             data: data.map(d => d.humidity),

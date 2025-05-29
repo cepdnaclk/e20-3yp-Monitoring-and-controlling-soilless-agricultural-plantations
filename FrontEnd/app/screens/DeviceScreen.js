@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, Alert, Modal } from 'react-native';
+import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, Alert, Modal,ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -356,6 +356,7 @@ if (!controlSnap.exists()) {
 
   return (
     <View style={styles.container}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
       <View style={styles.header}>
         <Text style={styles.title}>Manage Devices</Text>
       </View>
@@ -452,6 +453,7 @@ if (!controlSnap.exists()) {
           </View>
         ))}
       </View>
+      </ScrollView>
 
       <GroupPickerModal
         visible={groupPickerVisible}
