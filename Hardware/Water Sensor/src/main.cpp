@@ -1,6 +1,7 @@
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include <WiFiClientSecure.h>
+#include <WiFiManager.h> // Library for managing WiFi connections
 
 
 // Include necessary libraries
@@ -8,8 +9,8 @@
 #include "temperature_sensor.h" //header file to read temperature sensor data
 
 // WiFi credentials
-const char* ssid = "Devin Hasnaka";
-const char* password = "12345678";
+// const char* ssid = "Devin Hasnaka";
+// const char* password = "12345678";
 
 // MQTT credentials
 const char* mqttServer = "23162742be094f829a5b3f6f29eb5dd6.s1.eu.hivemq.cloud";
@@ -41,22 +42,6 @@ PubSubClient client(espClient);
 unsigned long lastPublishTime = 0;
 const long publishInterval = 5000;  // Publish every 5 minutes
 
-// // Function to connect to MQTT
-// void connectToMQTT() {
-//   while (!client.connected()) {
-//     Serial.println("Connecting to MQTT...");
-//     if (client.connect("ESP32Client", mqttUser, mqttPassword)) {
-//       Serial.println("Connected to HiveMQ");
-//       client.subscribe(controlTopic);  // Subscribe to control topic
-//     } else {
-//       Serial.print("MQTT Connection Failed, State: ");
-//       Serial.println(client.state());
-//       delay(2000);
-//     }
-//   }
-// }
-
-
 
 String get_level_of_water(float waterLevel){
   if(waterLevel > 500){
@@ -80,12 +65,6 @@ String get_level_of_water(float waterLevel){
 }
 // Function to publish random sensor data
 void publishSensorData() {
-  // float temperature = random(20, 35) + random(0, 99) / 100.0;  // Random 20.00 - 34.99
-  // float humidity = random(40, 90) + random(0, 99) / 100.0;     // Random 40.00 - 89.99
-  // float light = random(100, 1000);  // Random 100 - 999
-  // float temperature = dht.getTemperature();
-  // float humidity = dht.getHumidity();
-  // float light = LightMeter.readLightLevel();
 
   float waterLevel = analogRead(WaterLevel);
   int raw = analogRead(PHsensor);
@@ -107,9 +86,6 @@ void publishSensorData() {
   } else {
     Serial.println("Publish Failed");
   }
-  // Serial.print("Light Level: " + String(light) + " lx");
-  // Serial.print("\tTemperature: " + String(temperature) + " °C");
-  // Serial.println("\tHumidity: " + String(humidity) + " %");
 
   Serial.print("Water Level: " + water_level + " %");
   Serial.println("\tPH: " + String(PH) + " pH");
@@ -121,7 +97,9 @@ void setup() {
 
   Serial.begin(115200);
 
-  WiFi.begin(ssid, password);
+  //WiFi.begin(ssid, password);
+  WiFiManager wifiManager;
+  wifiManager.autoConnect("PlantPulse_Setup");
   Serial.print("Connecting to WiFi");
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
