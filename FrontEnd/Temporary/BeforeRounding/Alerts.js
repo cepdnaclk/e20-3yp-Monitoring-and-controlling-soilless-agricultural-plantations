@@ -131,10 +131,7 @@ export default function AlertsScreen({ userId, groupId }) {
         const unsubActive = onSnapshot(
           collection(db, `users/${userId}/deviceGroups/${groupId}/devices/${deviceId}/active_commands`),
           (snapshot) => {
-            const active = snapshot.docs
-              .filter(doc => !doc.id.startsWith("init"))
-              .map((doc) => ({
-
+            const active = snapshot.docs.map((doc) => ({
               id: `active-${type}-${doc.id}`,
               param: doc.id,
               message: `🚀 Active Command: ${doc.id} (Value: ${doc.data().value})`,
@@ -151,10 +148,7 @@ export default function AlertsScreen({ userId, groupId }) {
         const unsubStop = onSnapshot(
           collection(db, `users/${userId}/deviceGroups/${groupId}/devices/${deviceId}/stop_commands`),
           (snapshot) => {
-            const stop = snapshot.docs
-              .filter(doc => !doc.id.startsWith("init"))
-              .map((doc) => ({
-
+            const stop = snapshot.docs.map((doc) => ({
               id: `stop-${type}-${doc.id}`,
               param: doc.id,
               message: `🛑 Stop Command Sent: ${doc.data().action}`,

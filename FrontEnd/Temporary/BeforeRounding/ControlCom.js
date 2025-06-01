@@ -70,11 +70,9 @@ export const sendControlCommand = async (userId, groupId, action, value, deviceI
       return;
     }
 
-    const roundedValue = Math.round(value * 100) / 100;
-
     await setDoc(commandRef, {
       action,
-      value: roundedValue,
+      value,
       timestamp: new Date(),
     });
 
