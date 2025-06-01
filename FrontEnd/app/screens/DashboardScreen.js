@@ -15,6 +15,12 @@ export default function DashboardScreen({ navigation, route, userId, onGroupChan
   const [historyChartData, setHistoryChartData] = useState(null);
   const screenWidth = Dimensions.get('window').width;
 
+  const levelMap = {
+    critical: 1,
+    low: 2,
+    normal: 3
+  };
+
 
   useEffect(() => {
     const fetchGroups = async () => {
@@ -49,6 +55,7 @@ export default function DashboardScreen({ navigation, route, userId, onGroupChan
           { data: data.map(d => d.ph || 0) },
           { data: data.map(d => d.water_level || 0) },
           { data: data.map(d => d.light_intensity || 0) },
+          { data: data.map(d => d.ec || 0) },
         ],
       });
     });
@@ -69,6 +76,7 @@ export default function DashboardScreen({ navigation, route, userId, onGroupChan
         humidity: d.humidity || 0,
         ph: d.ph || 0,
         water_level: d.water_level || 0,
+        light_intensity: d.light_intensity || 0,
         timestamp: d.timestamp.toDate(),
       };
     });
@@ -97,9 +105,15 @@ export default function DashboardScreen({ navigation, route, userId, onGroupChan
           color: () => 'rgb(120, 43, 43)',
           strokeWidth: 2,
           label: 'pH Level'
+        },
+        {
+          data: dummyValues,
+          color: () => 'rgb(182, 32, 190)',
+          strokeWidth: 2,
+          label: 'Light Intensity'
         }
       ],
-      legend: ['Temperature', 'Humidity', 'pH Level']
+      legend: ['Temperature', 'Humidity', 'pH Level', 'Light Intensity']
     });
     return;
   }
@@ -126,9 +140,23 @@ export default function DashboardScreen({ navigation, route, userId, onGroupChan
         color: () => 'rgb(120, 43, 43)',
         strokeWidth: 2,
         label: 'pH Level'
+      },
+      {
+        data: historyData.map(d => d.light_intensity),
+        color: () => 'rgb(182, 32, 190)',
+        strokeWidth: 2,
+        label: 'Light Intensity'
+      },
+      {
+        data: historyData.map(d => levelMap[(d.water_level || "").trim().toLowerCase()] || 0),
+        color: () => 'rgb(25, 118, 210)', // Blue
+        strokeWidth: 2,
+        label: 'Water Level (1: Critical, 2: Low, 3: Normal)'
       }
+
     ],
-    legend: ['Temperature', 'Humidity','pH Level']
+    legend: ['Temperature', 'Humidity','pH Level', 'Light Intensity', 'Water Level']
+
   });
 });
 
@@ -155,6 +183,8 @@ export default function DashboardScreen({ navigation, route, userId, onGroupChan
         return value === 'Normal' ? 'green' : value === 'critical' ? 'red' : 'yellow';
       case 'soilMoisture':
         return value >= 10000 ? 'green' : value < 5000 ? 'red' : 'yellow';
+      case 'Water Level':
+        return value === 'normal' ? 'green' : value === 'critical' ? 'red' : 'yellow';
       default:
         return 'blue';
     }
@@ -188,7 +218,7 @@ export default function DashboardScreen({ navigation, route, userId, onGroupChan
       horizontal
       pagingEnabled
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ width: screenWidth * 3 }}
+      contentContainerStyle={{ width: screenWidth * 5 }}
       style={{ height: 280 }} // Increase height slightly
     >
       {/* Temperature Chart */}
@@ -200,8 +230,8 @@ export default function DashboardScreen({ navigation, route, userId, onGroupChan
         <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 5 }}>🌡 Temperature (°C)</Text>
         <LineChart
           data={{
-            labels: historyChartData.labels.map(label => 
-              label.length > 5 ? label.substring(0, 5) : label
+            labels: historyChartData.labels.map((label, index) =>
+              index % 4 === 0 ? label.substring(0, 5) : ''
             ),
             datasets: [historyChartData.datasets[0]],
           }}
@@ -244,11 +274,11 @@ export default function DashboardScreen({ navigation, route, userId, onGroupChan
         paddingHorizontal: 10,
         alignItems: 'center'
       }}>
-        <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 5 }}>ph Level</Text>
+        <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 5 }}>🧪 ph Level</Text>
         <LineChart
           data={{
-            labels: historyChartData.labels.map(label => 
-              label.length > 5 ? label.substring(0, 5) : label
+            labels: historyChartData.labels.map((label, index) =>
+              index % 4 === 0 ? label.substring(0, 5) : ''
             ),
             datasets: [historyChartData.datasets[2]],
           }}
@@ -294,8 +324,8 @@ export default function DashboardScreen({ navigation, route, userId, onGroupChan
         <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 5 }}>💧 Humidity (%)</Text>
         <LineChart
           data={{
-            labels: historyChartData.labels.map(label => 
-              label.length > 5 ? label.substring(0, 5) : label
+            labels: historyChartData.labels.map((label, index) =>
+              index % 4 === 0 ? label.substring(0, 5) : ''
             ),
             datasets: [historyChartData.datasets[1]],
           }}
@@ -331,6 +361,99 @@ export default function DashboardScreen({ navigation, route, userId, onGroupChan
           fromZero={false}
         />
       </View>
+
+      {/* Light Intensity Chart */}
+      <View style={{ 
+        width: Dimensions.get('window').width - 40,
+        paddingHorizontal: 10,
+        alignItems: 'center'
+      }}>
+        <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 5 }}>☀️ Light Intensity (Lux)</Text>
+        <LineChart
+          data={{
+            labels: historyChartData.labels.map((label, index) =>
+              index % 4 === 0 ? label.substring(0, 5) : ''
+            ),
+
+            datasets: [historyChartData.datasets[3]],
+          }}
+          width={Dimensions.get('window').width - 80} // More padding
+          height={220}
+          chartConfig={{
+            backgroundGradientFrom: '#f0f0f0',
+            backgroundGradientTo: '#f0f0f0',
+            decimalPlaces: 1,
+            color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+            labelColor: () => '#333',
+            style: { 
+              borderRadius: 10,
+              paddingRight: 40, // Increase right padding
+            },
+            propsForLabels: {
+              fontSize: 10,
+              paddingLeft: 0,
+              paddingRight: 10,
+              rotation: 0,
+            },
+            propsForBackgroundLines: {
+              strokeDasharray: '',
+            },
+          }}
+          bezier
+          style={{ 
+            borderRadius: 16,
+            marginVertical: 8,
+          }}
+          withHorizontalLabels={true}
+          withVerticalLabels={true}
+          fromZero={false}
+        />
+      </View>
+
+      {/* Water Level Chart */}
+<View style={{ 
+  width: Dimensions.get('window').width - 40,
+  paddingHorizontal: 10,
+  alignItems: 'center'
+}}>
+  <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 5 }}>🚰 Water Level (1: Critical, 2: Low, 3: Normal)</Text>
+  <LineChart
+    data={{
+      labels: historyChartData.labels.map((label, index) =>
+              index % 4 === 0 ? label.substring(0, 5) : ''
+            ),
+      datasets: [historyChartData.datasets[4]], // index 4 = water level
+    }}
+    width={Dimensions.get('window').width - 80}
+    height={220}
+    chartConfig={{
+      backgroundGradientFrom: '#f0f0f0',
+      backgroundGradientTo: '#f0f0f0',
+      decimalPlaces: 0,
+      color: (opacity = 1) => `rgba(30, 144, 255, ${opacity})`,
+      labelColor: () => '#333',
+      style: {
+        borderRadius: 10,
+        paddingRight: 40,
+      },
+      propsForLabels: {
+        fontSize: 10,
+      },
+      propsForBackgroundLines: {
+        strokeDasharray: '',
+      },
+    }}
+    bezier
+    style={{ 
+      borderRadius: 16,
+      marginVertical: 8,
+    }}
+    withHorizontalLabels={true}
+    withVerticalLabels={true}
+    fromZero={true}
+  />
+</View>
+
     </ScrollView>
   </View>
 )}
@@ -342,8 +465,9 @@ export default function DashboardScreen({ navigation, route, userId, onGroupChan
           { name: 'Temperature', icon: 'device-thermostat', value: getLatestReading(0), type: 'temperature', screen: 'Temperature', suffix: '°C' },
           { name: 'Humidity', icon: 'water-drop', value: getLatestReading(1), type: 'humidity', screen: 'Humidity', suffix: '%' },
           { name: 'pH Level', icon: 'science', value: getLatestReading(2), type: 'pH', screen: 'PhLevel', suffix: '' },
-          { name: 'Water Level', icon: 'water', value: getLatestReading(3), type: 'EC', screen: 'EcLevel', suffix: '' },
+          { name: 'EC', icon: 'water', value: getLatestReading(5), type: 'EC', screen: 'EcLevel', suffix: '' },
           { name: 'Light Intensity', icon: 'wb-sunny', value: getLatestReading(4), type: 'soilMoisture', screen: 'LightIntensity', suffix: ' Lux' },
+          { name: 'Water Level', icon: 'water', value: getLatestReading(3), type: 'Water Level', screen: 'WaterLevel', suffix: '' },
         ].map((param, index) => (
           <Card
             key={index}

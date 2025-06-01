@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, Dimensions } from 'react-native';
 import { LineChart } from 'react-native-chart-kit';
 import COLORS from '../config/colors';
-import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, limit, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 
 const screenWidth = Dimensions.get("window").width;
@@ -34,9 +34,7 @@ export default function TemperatureScreen({ route }) {
         })
         .reverse(); // oldest to newest
 
-      if (data.length > 0) {
-        setCurrentTemperature(data[data.length - 1].temperature);
-      }
+      
 
       setChartData({
         labels: data.map((d, index) =>
@@ -60,6 +58,28 @@ export default function TemperatureScreen({ route }) {
 
     return () => unsubscribe();
   }, [userId, groupId]);
+
+  useEffect(() => {
+  if (!userId || !groupId) return;
+
+  const fetchCurrentTemperature = async () => {
+    try {
+      const docRef = doc(db, `users/${userId}/deviceGroups/${groupId}/sensor_data`, "1");
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.temperature !== undefined) {
+          setCurrentTemperature(parseFloat(data.temperature));
+        }
+      }
+    } catch (error) {
+      console.error("❌ Error fetching current temperature:", error);
+    }
+  };
+
+  fetchCurrentTemperature();
+}, [userId, groupId]);
+
 
   return (
     <View style={styles.container}>

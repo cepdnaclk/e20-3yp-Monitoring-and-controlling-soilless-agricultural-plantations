@@ -39,16 +39,14 @@ export default function PhLevelScreen({ navigation, route }) {
         })
         .reverse(); // Oldest first
 
-      if (data.length > 0) {
-        setCurrentPhLevel(data[data.length - 1].ph);
-      }
+     
 
       setChartData({
-  labels: data.map((d, index) =>
-    index % 6 === 0
-      ? d.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      : ""
-  ),
+        labels: data.map((d, index) =>
+          index % 6 === 0
+            ? d.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            : ""
+        ),
   datasets: [
     {
       data: data.map(d => d.ph),
@@ -65,6 +63,29 @@ export default function PhLevelScreen({ navigation, route }) {
 
     return () => unsubscribe();
   }, [userId, groupId]);
+
+useEffect(() => {
+  if (!userId || !groupId) return;
+
+  const fetchCurrentPh = async () => {
+    try {
+      const docRef = doc(db, `users/${userId}/deviceGroups/${groupId}/sensor_data`, "1");
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.ph !== undefined) {
+          setCurrentPhLevel(parseFloat(data.ph));
+        }
+      }
+    } catch (error) {
+      console.error("❌ Error fetching current pH:", error);
+    }
+  };
+
+  fetchCurrentPh();
+}, [userId, groupId]);
+
+
 
   // 🔄 Get current pH target for manual override field
   useEffect(() => {

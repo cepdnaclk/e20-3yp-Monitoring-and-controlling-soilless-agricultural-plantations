@@ -93,7 +93,7 @@ export default function EcLevelScreen({ navigation, route }) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Water Level Adjustment</Text>
+      <Text style={styles.title}>EC Adjustment</Text>
 
       {loading ? (
         <ActivityIndicator size="large" color="#3498db" />
@@ -118,7 +118,7 @@ export default function EcLevelScreen({ navigation, route }) {
 
       {/* Current EC Level Display */}
       <View style={styles.currentValueContainer}>
-        <Text style={styles.currentValueLabel}>Current Water Level:</Text>
+        <Text style={styles.currentValueLabel}>Current EC:</Text>
         <Text style={styles.currentValueText}>{currentEcLevel}</Text>
       </View>
 
