@@ -1,28 +1,27 @@
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include <WiFiClientSecure.h>
+#include <WiFiManager.h> // Library for managing WiFi connections
 
 #include <DHTesp.h>
 #include <BH1750.h>
 #include <Wire.h>
 
+#include "connect_to_mqtt.h" //header file to connect to MQTT broker
+#include "blinkLED.h" //header file to blink LED
+
 // WiFi credentials
 // const char *ssid = "Eng-Student";
 // const char *password = "3nG5tuDt";
 
-const char *ssid = "Devin Hasnaka";
-const char *password = "12345678";
+// const char *ssid = "Devin Hasnaka";
+// const char *password = "12345678";
 
 // MQTT credentials
 const char *mqttServer = "23162742be094f829a5b3f6f29eb5dd6.s1.eu.hivemq.cloud";
 const int mqttPort = 8883;
 const char *mqttUser = "Tharusha";
 const char *mqttPassword = "Tharusha2001";
-
-// const char* mqttServer = "4cb394bbc8284672b38e8d39dc842c9f.s1.eu.hivemq.cloud";
-// const int mqttPort = 8883;
-// const char* mqttUser = "Devin";
-// const char* mqttPassword = "Devin2001";
 
 // Topics
 const char *controlTopic = "test/topic"; // Receive control updates
@@ -41,64 +40,34 @@ DHTesp dht;
 
 // Initializing the BH1750 sensor
 BH1750 LightMeter;
-void blinkLED(int pin, int duration)
-{
-  digitalWrite(pin, HIGH);
-  delay(duration);
-  digitalWrite(pin, LOW);
-}
-// Callback for incoming MQTT messages
-void callback(char *topic, byte *payload, unsigned int length)
-{
-  Serial.print("Message received on topic: ");
-  Serial.println(topic);
-
-  String message = "";
-  for (int i = 0; i < length; i++)
-  {
-    message += (char)payload[i];
-  }
-
-  Serial.println("Message: " + message);
-
-  if (String(topic) == controlTopic)
-  {
-    Serial.println("Processing Firestore update...");
-    // Parse JSON message for pump control
-    if (message.indexOf("\"pump\": \"ON\"") > 0)
-    {
-      digitalWrite(5, HIGH);
-      Serial.println("Pump ON");
-    }
-    else if (message.indexOf("\"pump\": \"OFF\"") > 0)
-    {
-      digitalWrite(5, LOW);
-      Serial.println("Pump OFF");
-    }
-  }
-}
+// void blinkLED(int pin, int duration)
+// {
+//   digitalWrite(pin, HIGH);
+//   delay(duration);
+//   digitalWrite(pin, LOW);
+// }
 
 // Function to connect to MQTT
-void connectToMQTT()
-{
-  while (!client.connected())
-  {
-    Serial.println("Connecting to MQTT...");
-    if (client.connect("ESP32Client", mqttUser, mqttPassword))
-    {
-      Serial.println("Connected to HiveMQ");
-      digitalWrite(17, HIGH); // Turn on LED when connected (Red LED)
-      client.subscribe(controlTopic); // Subscribe to control topic
-    }
-    else
-    {
-      Serial.print("MQTT Connection Failed, State: ");
-      Serial.println(client.state());
-      delay(2000);
-      blinkLED(17, 1000); // Blink LED while connecting
-    }
-  }
-}
+// void connectToMQTT()
+// {
+//   while (!client.connected())
+//   {
+//     Serial.println("Connecting to MQTT...");
+//     if (client.connect("ESP32Client", mqttUser, mqttPassword))
+//     {
+//       Serial.println("Connected to HiveMQ");
+//       digitalWrite(17, HIGH); // Turn on LED when connected (Red LED)
+//       client.subscribe(controlTopic); // Subscribe to control topic
+//     }
+//     else
+//     {
+//       Serial.print("MQTT Connection Failed, State: ");
+//       Serial.println(client.state());
+//       delay(2000);
+//       blinkLED(17, 1000); // Blink LED while connecting
+//     }
+//   }
+// }
 
 // Function to publish random sensor data
 void publishSensorData()
@@ -133,11 +102,13 @@ void publishSensorData()
 
 void setup()
 {
-  Serial.begin(9600);
+  Serial.begin(115200);
   pinMode(5, OUTPUT);
   pinMode(17, OUTPUT); // LED pin for MQTT connection status
 
-  WiFi.begin(ssid, password);
+  //
+  WiFiManager wifiManager;
+  wifiManager.autoConnect("PlantPulse_Setup");
   Serial.print("Connecting to WiFi");
   while (WiFi.status() != WL_CONNECTED)
   {
@@ -150,8 +121,17 @@ void setup()
 
   espClient.setInsecure(); // Allow SSL without certificates
   client.setServer(mqttServer, mqttPort);
-  client.setCallback(callback);
-  connectToMQTT();
+  connectToMQTT(mqttServer, mqttPort, mqttUser, mqttPassword, client, controlTopic);
+  if (client.connected())
+  {
+    Serial.println("Connected to MQTT Broker");
+    digitalWrite(17, HIGH); // Turn on LED when connected (Red LED)
+  }
+  else
+  {
+    Serial.println("Failed to connect to MQTT Broker");
+    digitalWrite(17, LOW); // Turn off LED if connection fails
+  }
 
   // Initializing the DHT sensor
   dht.setup(4, DHTesp::DHT22);
@@ -171,7 +151,8 @@ void loop()
 
   if (!client.connected())
   {
-    connectToMQTT();
+    digitalWrite(17, LOW); // Turn off LED if disconnected
+    connectToMQTT(mqttServer, mqttPort, mqttUser, mqttPassword, client, controlTopic);
   }
   client.loop(); // Keep MQTT connection active
 
