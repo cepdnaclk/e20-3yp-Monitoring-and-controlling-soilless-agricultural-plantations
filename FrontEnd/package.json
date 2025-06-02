@@ -53,11 +53,17 @@
   "jest": {
     "preset": "jest-expo",
     "setupFilesAfterEnv": [
-      "@testing-library/jest-native/extend-expect"
+      "@testing-library/jest-native/extend-expect",
+      "<rootDir>/jest.setup.js"
     ],
     "transformIgnorePatterns": [
-      "node_modules/(?!(jest-)?react-native|@react-native|@react-navigation)"
-    ]
-  },
+      "node_modules/(?!((jest-)?react-native|@react-native(-community)?|@react-navigation|@firebase|firebase|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-clone-referenced-element|@react-native-picker/picker|react-native-svg))"
+    ],
+    "testEnvironment": "jsdom",
+    "moduleNameMapper": {
+      "^@/(.*)$": "<rootDir>/app/$1"
+    }
+  }
+,
   "private": true
 }

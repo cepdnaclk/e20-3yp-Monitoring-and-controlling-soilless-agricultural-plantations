@@ -5,11 +5,17 @@ export default {
     name: "PlantPulse",
     slug: "PlantPulse",
     version: "1.0.0",
+    android: {
+      package: "com.sachiya.plantpulse" // 🔧 Use a unique identifier!
+    },
     extra: {
+      eas: {
+        projectId: "2493711b-fc21-4860-9a1d-a2cc90d42dab",
+      },
       cloudinarySecret: process.env.CLOUDINARY_SECRET,
       cloudinaryApiKey: process.env.CLOUDINARY_API_KEY,
       cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME,
-      cloudinaryUploadPreset: process.env.CLOUDINARY_UPLOAD_PRESET
+      cloudinaryUploadPreset: process.env.CLOUDINARY_UPLOAD_PRESET,
     },
   },
 };
