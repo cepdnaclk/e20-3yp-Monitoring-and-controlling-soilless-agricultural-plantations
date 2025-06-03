@@ -15,6 +15,7 @@ import HumidityScreen from './app/screens/HumidityScreen';
 import PhLevelScreen from './app/screens/PhLevelScreen';
 import EcLevelScreen from './app/screens/EcLevelScreen';
 import LightScreen from './app/screens/LightScreen';
+import WaterLevelScreen from './app/screens/WaterLevelScreen';
 
 import LandingScreen from './app/screens/LandingScreen';
 import PlantationsScreen from './app/screens/PlantationsScreen';
@@ -134,6 +135,12 @@ export default function App() {
           name="LightIntensity" 
           component={LightScreen} 
           options={{ title: 'Light Intensity' }} 
+        />
+
+        <Stack.Screen 
+          name="WaterLevel"
+          component={WaterLevelScreen}  
+          options={{ title: 'Water Level' }} 
         />
 
       </Stack.Navigator>

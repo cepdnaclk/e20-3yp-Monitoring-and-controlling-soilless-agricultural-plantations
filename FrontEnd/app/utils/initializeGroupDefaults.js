@@ -1,8 +1,9 @@
 import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 
-export const initializeGroupDefaults = async (userId, groupId) => {
+export const initializeGroupDefaults = async (userId, groupId, deviceId = null) => {
   console.log(`🔧 Starting initialization for group: ${groupId}`);
+  console.log(`📱 DeviceId provided: ${deviceId}`); // Add this debug log
   
   const subcollectionsToInit = [
     {
@@ -25,14 +26,14 @@ export const initializeGroupDefaults = async (userId, groupId) => {
     },
     {
       collection: "control_settings",
-      docId: "1", // This should be the main settings document
+      docId: "1", // Main config
       data: {
         createdAt: serverTimestamp(),
-        pHTarget: 6.5,
-        ecTarget: 2.0,
-        soilMoistureTarget: 50,
-        tempTarget: 24,
-        humidityTarget: 60,
+        pHTarget: 7.0,
+        ecTarget: 5.0,
+        soilMoistureTarget: 10,
+        tempTarget: 25.0,
+        humidityTarget: 30,
         mode: "auto"
       }
     },
@@ -47,15 +48,15 @@ export const initializeGroupDefaults = async (userId, groupId) => {
     },
     {
       collection: "sensor_data",
-      docId: "latest", // Use a consistent document ID for latest sensor data
+      docId: "1", // Latest reading
       data: {
-        ec: 0.0,
-        humidity: 0,
-        light_intensity: 0,
+        ec: 5.0,
+        humidity: 30,
+        light_intensity: 2000,
         ph: 7.0,
-        soil_moisture: 0,
-        temperature: 0.0,
-        water_level: "unknown",
+        soil_moisture: 10,
+        temperature: 25.0,
+        water_level: "normal",
         timestamp: serverTimestamp(),
         initialized: true
       }
@@ -69,6 +70,7 @@ export const initializeGroupDefaults = async (userId, groupId) => {
   };
 
   try {
+    // Group-level initialization
     for (const subcollection of subcollectionsToInit) {
       try {
         const docPath = `users/${userId}/deviceGroups/${groupId}/${subcollection.collection}/${subcollection.docId}`;
@@ -80,10 +82,10 @@ export const initializeGroupDefaults = async (userId, groupId) => {
         if (!docSnap.exists()) {
           await setDoc(docRef, subcollection.data);
           console.log(`✅ Created: ${subcollection.collection}/${subcollection.docId}`);
-          results.success.push(subcollection.collection);
+          results.success.push(docPath);
         } else {
           console.log(`⚠️ Already exists: ${subcollection.collection}/${subcollection.docId}`);
-          results.skipped.push(subcollection.collection);
+          results.skipped.push(docPath);
         }
       } catch (subcollectionError) {
         console.error(`❌ Error creating ${subcollection.collection}:`, subcollectionError);
@@ -94,72 +96,63 @@ export const initializeGroupDefaults = async (userId, groupId) => {
       }
     }
 
-    console.log(`✅ Group initialization completed for ${groupId}:`);
-    console.log(`   - Success: ${results.success.length} collections`);
-    console.log(`   - Skipped: ${results.skipped.length} collections`);
-    console.log(`   - Errors: ${results.errors.length} collections`);
+    // Device-level commands under group path - Fixed condition check
+    if (deviceId && deviceId !== null && deviceId !== '') {
+      console.log(`🔧 Initializing device commands for: ${deviceId} under group: ${groupId}`);
+      
+      const deviceCommands = [
+        {
+          path: `users/${userId}/deviceGroups/${groupId}/devices/${deviceId}/active_commands/init`,
+          data: {
+            createdAt: serverTimestamp(),
+            status: "init",
+            placeholder: true
+          }
+        },
+        {
+          path: `users/${userId}/deviceGroups/${groupId}/devices/${deviceId}/stop_commands/init`,
+          data: {
+            createdAt: serverTimestamp(),
+            status: "init",
+            placeholder: true
+          }
+        }
+      ];
 
-    if (results.errors.length > 0) {
-      console.error("❌ Initialization errors:", results.errors);
+      for (const { path, data } of deviceCommands) {
+        try {
+          console.log(`📱 Attempting to create device command: ${path}`); // Add debug log
+          const docRef = doc(db, path);
+          const docSnap = await getDoc(docRef);
+          if (!docSnap.exists()) {
+            await setDoc(docRef, data);
+            console.log(`✅ Created: ${path}`);
+            results.success.push(path);
+          } else {
+            console.log(`⚠️ Skipped (exists): ${path}`);
+            results.skipped.push(path);
+          }
+        } catch (deviceError) {
+          console.error(`❌ Error creating ${path}:`, deviceError);
+          results.errors.push({ path, error: deviceError.message });
+        }
+      }
+    } else {
+      console.log(`⚠️ No deviceId provided, skipping device-level initialization`);
     }
+
+    console.log(`✅ Initialization completed for group: ${groupId}`);
+    console.log(`   - Success: ${results.success.length}`);
+    console.log(`   - Skipped: ${results.skipped.length}`);
+    console.log(`   - Errors: ${results.errors.length}`);
 
     return {
       success: results.errors.length === 0,
       results
     };
 
-  } catch (error) {
-    console.error("🔥 Fatal error during group initialization:", error);
-    throw error;
-  }
-};
-
-// Alternative function to create all subcollections at once with batch writes
-export const initializeGroupDefaultsBatch = async (userId, groupId) => {
-  console.log(`🔧 Starting BATCH initialization for group: ${groupId}`);
-  
-  try {
-    const subcollections = [
-      { path: `active_commands/init`, data: { createdAt: serverTimestamp(), status: "init", placeholder: true } },
-      { path: `alerts/init`, data: { createdAt: serverTimestamp(), status: "init", placeholder: true } },
-      { path: `control_settings/1`, data: { createdAt: serverTimestamp(), pHTarget: 6.5, ecTarget: 2.0, soilMoistureTarget: 50, tempTarget: 24, humidityTarget: 60, mode: "auto" } },
-      { path: `stop_commands/init`, data: { createdAt: serverTimestamp(), status: "init", placeholder: true } },
-      { path: `sensor_data/latest`, data: { ec: 0.0, humidity: 0, light_intensity: 0, ph: 7.0, soil_moisture: 0, temperature: 0.0, water_level: "unknown", timestamp: serverTimestamp(), initialized: true } }
-    ];
-
-    // Create all documents
-    const promises = subcollections.map(async ({ path, data }) => {
-      const fullPath = `users/${userId}/deviceGroups/${groupId}/${path}`;
-      const docRef = doc(db, fullPath);
-      
-      // Check if document exists first
-      const docSnap = await getDoc(docRef);
-      if (!docSnap.exists()) {
-        await setDoc(docRef, data);
-        console.log(`✅ Created: ${path}`);
-        return { path, status: 'created' };
-      } else {
-        console.log(`⚠️ Skipped (exists): ${path}`);
-        return { path, status: 'skipped' };
-      }
-    });
-
-    const results = await Promise.allSettled(promises);
-    
-    const successful = results.filter(r => r.status === 'fulfilled').length;
-    const failed = results.filter(r => r.status === 'rejected').length;
-
-    console.log(`✅ Batch initialization completed: ${successful} successful, ${failed} failed`);
-    
-    return {
-      success: failed === 0,
-      successful,
-      failed,
-      results
-    };
-
-  } catch (error) {
-    console.error("🔥 Fatal error during batch initialization:", error);
-    throw error;
+  } catch (fatalError) {
+    console.error("🔥 Fatal error during group/device initialization:", fatalError);
+    throw fatalError;
   }
 };

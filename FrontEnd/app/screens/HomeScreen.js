@@ -8,6 +8,7 @@ import DevicesScreen from './DeviceScreen';
 import LandingScreen from './LandingScreen';
 import AlertScreen from './AlertScreen';
 import COLORS from '../config/colors';
+
 import { useState } from 'react';
 import { useEffect } from 'react';
 

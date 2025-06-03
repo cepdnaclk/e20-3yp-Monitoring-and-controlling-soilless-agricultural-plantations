@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, Alert, Modal } from 'react-native';
+import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, Alert, Modal,ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -242,6 +242,8 @@ export default function DeviceScreen() {
       userId,
     };
 
+    console.log('🆔 Device ID:', device.id); // Add this debug log
+
     // Step 1: Save to global device list
     const globalDeviceRef = doc(db, 'users', userId, 'devices', device.id);
     await setDoc(globalDeviceRef, deviceWithGroup);
@@ -265,72 +267,33 @@ export default function DeviceScreen() {
     } else if (!groupDocSnap.exists()) {
       console.log('ℹ️ Group did not exist, creating...');
       await setDoc(groupDocRef, { createdAt: serverTimestamp() });
-      try {
-        const initResult = await initializeGroupDefaults(userId, groupId);
-        if (initResult.success) {
-          console.log(`✅ Initialized existing group: ${groupId}`);
-        } else {
-          console.warn(`⚠️ Group initialized with some errors: ${groupId}`, initResult.results.errors);
-        }
-      } catch (initError) {
-        console.error(`❌ Failed to initialize group defaults: ${groupId}`, initError);
-      }
     }
 
+    // Step 4: ALWAYS initialize group and device defaults
+    console.log('🔧 Initializing group and device defaults...');
+    try {
+      const initResult = await initializeGroupDefaults(userId, groupId, device.id);
+      if (initResult.success) {
+        console.log(`✅ Initialized group and device defaults: ${groupId}`);
+        console.log(`   - Success: ${initResult.results.success.length}`);
+        console.log(`   - Skipped: ${initResult.results.skipped.length}`);
+        console.log(`   - Errors: ${initResult.results.errors.length}`);
+      } else {
+        console.warn(`⚠️ Group/device initialized with some errors: ${groupId}`, initResult.results.errors);
+      }
+    } catch (initError) {
+      console.error(`❌ Failed to initialize group/device defaults: ${groupId}`, initError);
+    }
+
+    // Remove all the manual creation steps (Steps 4-7) since initializeGroupDefaults handles them
+    // The following code is now redundant and can be removed:
+    /*
     // Step 4: Ensure sensor_data exists
     const sensorDataRef = doc(db, `users/${userId}/deviceGroups/${groupId}/sensor_data`, '1');
-    const sensorSnap = await getDoc(sensorDataRef);
-    if (!sensorSnap.exists()) {
-      await setDoc(sensorDataRef, {
-        ec: 3.5,
-        humidity: 45,
-        light_intensity: 75,
-        ph: 12,
-        soil_moisture: 31,
-        temperature: 26.3,
-        water_level: "critical",
-        timestamp: serverTimestamp()
-      });
-      console.log('✅ sensor_data created at:', sensorDataRef.path);
-    }
+    // ... (remove all manual creation steps)
+    */
 
-    // Step 5: Ensure active_commands exists
-    const activeRef = doc(db, `users/${userId}/deviceGroups/${groupId}/active_commands`, 'init');
-    const activeSnap = await getDoc(activeRef);
-    if (!activeSnap.exists()) {
-      await setDoc(activeRef, {
-        createdAt: serverTimestamp(),
-        status: 'init'
-      });
-      console.log('✅ active_commands created at:', activeRef.path);
-    }
-
-    // Step 6: Ensure stop_commands exists
-    const stopRef = doc(db, `users/${userId}/deviceGroups/${groupId}/stop_commands`, 'init');
-    const stopSnap = await getDoc(stopRef);
-    if (!stopSnap.exists()) {
-      await setDoc(stopRef, {
-        createdAt: serverTimestamp(),
-        status: 'init'
-      });
-      console.log('✅ stop_commands created at:', stopRef.path);
-    }
-    // Step 7: Ensure control_settings exists
-const controlRef = doc(db, `users/${userId}/deviceGroups/${groupId}/control_settings`, '1');
-const controlSnap = await getDoc(controlRef);
-if (!controlSnap.exists()) {
-  await setDoc(controlRef, {
-    pHTarget: 12,
-    ecTarget: 7,
-    lightTarget: 12999,
-    soilMoistureTarget: 32,
-    timestamp: serverTimestamp()
-  });
-  console.log('✅ control_settings created at:', controlRef.path);
-}
-
-
-    // Step 7: Update UI map if new group
+    // Step 5: Update UI map if new group
     if (isNewGroup) {
       setGroupMap(prev => ({
         ...prev,
@@ -356,6 +319,7 @@ if (!controlSnap.exists()) {
 
   return (
     <View style={styles.container}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
       <View style={styles.header}>
         <Text style={styles.title}>Manage Devices</Text>
       </View>
@@ -452,6 +416,7 @@ if (!controlSnap.exists()) {
           </View>
         ))}
       </View>
+      </ScrollView>
 
       <GroupPickerModal
         visible={groupPickerVisible}

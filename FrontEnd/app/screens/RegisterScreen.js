@@ -36,6 +36,14 @@ const RegisterScreen = ({ navigation }) => {
         createdAt: serverTimestamp(),
       });
 
+      const groupId = "default-group";
+
+      await setDoc(doc(db, `users/${user.uid}/deviceGroups/${groupId}`), {
+        groupId,
+        name: "Default Group",
+        createdAt: serverTimestamp()
+      });
+
       // Initialize subcollections
       await Promise.all([
         setDoc(doc(db, `users/${user.uid}/deviceGroups/${groupId}/active_commands`, 'init'), {
@@ -45,10 +53,11 @@ const RegisterScreen = ({ navigation }) => {
           createdAt: serverTimestamp(),
           status: 'init'
         }),
-        setDoc(doc(db, `users/${user.uid}/deviceGroups/${groupId}/control_settings`, 'init'), {
-          createdAt: serverTimestamp(),
-          threshold_ph: 7,
-          mode: 'auto'
+        setDoc(doc(db, `users/${user.uid}/deviceGroups/${groupId}/control_settings`, '1'), {
+          ecTarget: 5.0,
+          lightTarget:79000,
+          pHTarget: 7.0,
+          soilMoistureTarget: 50,
         }),
         setDoc(doc(db, `users/${user.uid}/deviceGroups/${groupId}/stop_settings`, 'init'), {
           createdAt: serverTimestamp(),

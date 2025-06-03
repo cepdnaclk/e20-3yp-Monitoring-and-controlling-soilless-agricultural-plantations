@@ -1,10 +1,28 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl } from "react-native";
+// AlertsScreen.js (Fixed Version)
+
+import React, { useState, useEffect, useRef } from "react";
+import {
+  View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl
+} from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { collection, doc, getDoc, onSnapshot } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import COLORS from "../config/colors";
-import { sendControlCommand, sendStopCommand } from "../utils/controlCommands";
+import {
+  sendControlCommand,
+  sendStopCommand,
+  fetchDeviceIdMap,
+} from "../utils/controlCommands";
+
+const ACTION_DEVICE_TYPE_MAP = {
+  increase_pH: "nutrient_pump",
+  decrease_pH: "water_pump",
+  increase_EC: "nutrient_pump",
+  decrease_EC: "water_pump",
+  increase_water_level: "water_pump",
+  decrease_water_level: "disposal_pump",
+  water_circulation: "circulation_pump",
+};
 
 export default function AlertsScreen({ userId, groupId }) {
   const [alerts, setAlerts] = useState([]);
@@ -13,6 +31,7 @@ export default function AlertsScreen({ userId, groupId }) {
   const unsubscribeFunctions = useRef([]);
   const latestSensorDataRef = useRef(null);
   const latestControlSettingsRef = useRef(null);
+  const deviceIdMapRef = useRef(null);
 
   useEffect(() => {
     if (!userId || !groupId) {
@@ -20,16 +39,25 @@ export default function AlertsScreen({ userId, groupId }) {
       return;
     }
 
-    setAlerts([]);
-    alertsMap.current.clear();
+    const initialize = async () => {
+      setAlerts([]);
+      alertsMap.current.clear();
+      unsubscribeFunctions.current.forEach((unsub) => unsub());
+      unsubscribeFunctions.current = [];
 
-    unsubscribeFunctions.current.forEach(unsub => unsub());
-    unsubscribeFunctions.current = [];
+      const freshDeviceIdMap = await fetchDeviceIdMap(userId, groupId);
+      deviceIdMapRef.current = freshDeviceIdMap;
 
-    fetchAlerts();
+      latestSensorDataRef.current = null;
+      latestControlSettingsRef.current = null;
+
+      fetchAlerts(freshDeviceIdMap);
+    };
+
+    initialize();
 
     return () => {
-      unsubscribeFunctions.current.forEach(unsub => unsub());
+      unsubscribeFunctions.current.forEach((unsub) => unsub());
       unsubscribeFunctions.current = [];
     };
   }, [userId, groupId]);
@@ -37,7 +65,8 @@ export default function AlertsScreen({ userId, groupId }) {
   const tryTriggerAlerts = () => {
     const sensor = latestSensorDataRef.current;
     const settings = latestControlSettingsRef.current;
-    if (!sensor || !settings) return;
+    const deviceIdMap = deviceIdMapRef.current;
+    if (!sensor || !settings || !deviceIdMap) return;
 
     const newAlerts = [];
 
@@ -56,26 +85,28 @@ export default function AlertsScreen({ userId, groupId }) {
             message: `⚠️ ${param} is off! (Current: ${current}, Target: ${target})`,
             timestamp: new Date().toLocaleString(),
           });
-          sendControlCommand(userId, groupId, action, value);
+          console.log("✅ Triggering control command:", { groupId, action, value });
+          sendControlCommand(userId, groupId, action, value, deviceIdMap);
         }
         newAlerts.push(alertsMap.current.get(key));
       } else if (alertsMap.current.has(key)) {
         const prev = alertsMap.current.get(key);
         alertsMap.current.delete(key);
-        sendStopCommand(userId, groupId, prev.action);
+        console.log("🛑 Triggering stop command:", { groupId, action: prev.action });
+        sendStopCommand(userId, groupId, prev.action, deviceIdMap);
       }
     };
 
     check("pH Level", sensor.ph, settings.pHTarget, "increase_pH", "decrease_pH", 1);
     check("EC Level", sensor.ec, settings.ecTarget, "increase_EC", "decrease_EC", 1);
-    check("Soil Moisture", sensor.soil_moisture, settings.soilMoistureTarget, "increase_soil_moisture", "decrease_soil_moisture", 10);
+    check("Soil Moisture", sensor.soil_moisture, settings.soilMoistureTarget, "increase_water_level", "decrease_water_level", 10);
     check("Temperature", sensor.temperature, settings.tempTarget, "increase_temp", "decrease_temp", 2);
     check("Humidity", sensor.humidity, settings.humidityTarget, "increase_humidity", "decrease_humidity", 5);
 
     setAlerts((prev) => [...prev.filter(a => !a.id.endsWith("-alert")), ...newAlerts]);
   };
 
-  const fetchAlerts = async () => {
+  const fetchAlerts = async (deviceIdMap) => {
     if (!userId || !groupId) return;
     setRefreshing(true);
 
@@ -97,45 +128,39 @@ export default function AlertsScreen({ userId, groupId }) {
       }
     );
 
-    const unsubscribeActiveCommands = onSnapshot(
-      collection(db, `users/${userId}/deviceGroups/${groupId}/active_commands`),
-      (snapshot) => {
-        const activeCommands = snapshot.docs.filter(doc => doc.id !== 'init').map((doc) => ({
-          id: `active-${doc.id}`,
-          param: doc.data().action,
-          message: `🚀 Active Command: ${doc.data().action} (Value: ${doc.data().value})`,
-          timestamp: doc.data().timestamp?.seconds
-            ? new Date(doc.data().timestamp.seconds * 1000).toLocaleString()
-            : "No Timestamp",
-        }));
+    const unsubscribeDevices = [];
 
-        setAlerts((prev) => [...prev.filter(a => !a.id.startsWith("active-")), ...activeCommands]);
-      }
-    );
+    for (const [type, deviceId] of Object.entries(deviceIdMap)) {
+      const unsubActive = onSnapshot(
+        collection(db, `users/${userId}/deviceGroups/${groupId}/devices/${deviceId}/active_commands`),
+        (snapshot) => {
+          const active = snapshot.docs.filter(doc => !doc.id.startsWith("init")).map(doc => ({
+            id: `active-${type}-${doc.id}`,
+            param: doc.id,
+            message: `🚀 Active Command: ${doc.id} (Value: ${doc.data().value})`,
+            timestamp: doc.data().timestamp?.seconds ? new Date(doc.data().timestamp.seconds * 1000).toLocaleString() : "No Timestamp",
+          }));
+          setAlerts((prev) => [...prev.filter(a => !a.id.startsWith(`active-${type}-`)), ...active]);
+        }
+      );
+      unsubscribeDevices.push(unsubActive);
 
-    const unsubscribeStopCommands = onSnapshot(
-      collection(db, `users/${userId}/deviceGroups/${groupId}/stop_commands`),
-      (snapshot) => {
-        const stopCommands = snapshot.docs.filter(doc => doc.id !== 'init').map((doc) => ({
-          id: `stop-${doc.id}`,
-          param: doc.data().action,
-          message: `🛑 Stop Command Sent: ${doc.data().action}`,
-          timestamp: doc.data().timestamp?.seconds
-            ? new Date(doc.data().timestamp.seconds * 1000).toLocaleString()
-            : "No Timestamp",
-        }));
+      const unsubStop = onSnapshot(
+        collection(db, `users/${userId}/deviceGroups/${groupId}/devices/${deviceId}/stop_commands`),
+        (snapshot) => {
+          const stop = snapshot.docs.filter(doc => !doc.id.startsWith("init")).map(doc => ({
+            id: `stop-${type}-${doc.id}`,
+            param: doc.id,
+            message: `🛑 Stop Command Sent: ${doc.data().action}`,
+            timestamp: doc.data().timestamp?.seconds ? new Date(doc.data().timestamp.seconds * 1000).toLocaleString() : "No Timestamp",
+          }));
+          setAlerts((prev) => [...prev.filter(a => !a.id.startsWith(`stop-${type}-`)), ...stop]);
+        }
+      );
+      unsubscribeDevices.push(unsubStop);
+    }
 
-        setAlerts((prev) => [...prev.filter(a => !a.id.startsWith("stop-")), ...stopCommands]);
-      }
-    );
-
-    unsubscribeFunctions.current = [
-      unsubscribeControlSettings,
-      unsubscribeSensorData,
-      unsubscribeActiveCommands,
-      unsubscribeStopCommands
-    ];
-
+    unsubscribeFunctions.current = [unsubscribeControlSettings, unsubscribeSensorData, ...unsubscribeDevices];
     setRefreshing(false);
   };
 
@@ -164,7 +189,7 @@ export default function AlertsScreen({ userId, groupId }) {
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            onRefresh={fetchAlerts}
+            onRefresh={() => fetchAlerts(deviceIdMapRef.current)}
             colors={["#00C853"]}
           />
         }
