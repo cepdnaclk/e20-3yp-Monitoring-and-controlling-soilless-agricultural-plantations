@@ -3,6 +3,7 @@
 #include <WiFiClientSecure.h>
 
 #include "connect_to_mqtt.h" // Header file to connect to MQTT broker
+#include "blinkLED.h" // Header file to blink LED during connection attempts
 // WiFi credentials
 const char* ssid = "Devin Hasnaka";
 const char* password = "12345678";
@@ -32,7 +33,8 @@ unsigned long lastPublishTime = 0;
 const long publishInterval = 5000;  // Publish every 5 minutes
 
 //sensor pins
-#define MOTOR 2
+#define MOTOR_B_1A 22
+#define MOTOR_B_2A 23
 
 
 // Callback for incoming MQTT messages
@@ -51,10 +53,10 @@ void callback(char* topic, byte* payload, unsigned int length) {
     Serial.println("Processing Firestore update...");
     // Parse JSON message for pump control
     if (message.indexOf("\"pump\":\"ON\"") > 0) {
-      digitalWrite(MOTOR, HIGH);
+      digitalWrite(MOTOR_B_1A, HIGH);
       Serial.println("Pump ON");
     } else if (message.indexOf("\"pump\":\"OFF\"") > 0) {
-      digitalWrite(MOTOR, LOW);
+      digitalWrite(MOTOR_B_1A, LOW);
       Serial.println("Pump OFF");
     }
   }
@@ -80,13 +82,18 @@ void callback(char* topic, byte* payload, unsigned int length) {
 
 void setup() {
   Serial.begin(9600);
-  pinMode(MOTOR, OUTPUT);
-  pinMode(32, OUTPUT);
+  pinMode(MOTOR_B_1A, OUTPUT);
+  pinMode(MOTOR_B_2A, OUTPUT);
+  ledcAttachPin(MOTOR_B_1A, 0); // Channel 0 for pin 22
+  ledcAttachPin(MOTOR_B_2A, 1); // Channel 1 for pin 23
+  ledcSetup(0, 5000, 8); // Channel 0, 5kHz, 8-bit resolution
+  ledcSetup(1, 5000, 8); // Channel 1, 5kHz, 8-bit resolution
 
   WiFi.begin(ssid, password);
   Serial.print("Connecting to WiFi");
   while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
+    //delay(500);
+    blinkLED(18, 500);
     Serial.print(".");
   }
   Serial.println("\nWiFi Connected");
@@ -105,9 +112,14 @@ void loop() {
   }
   client.loop(); // Keep MQTT connection active
 
-  // Publish sensor data every 5 minutes
-  // if (millis() - lastPublishTime >= publishInterval) {
-  //   publishSensorData();
-  //   lastPublishTime = millis();
-  // }
+  //Publish sensor data every 5 minutes
+  if (millis() - lastPublishTime >= publishInterval) {
+    //publishSensorData();
+    for (int speed = 0; speed <= 255; speed += 5) { // 8-bit PWM: 0-255
+      ledcWrite(0, speed); // Increase speed on MOTOR_B_1A
+      ledcWrite(1, 0);     // Ensure MOTOR_B_2A is off
+      delay(10);
+    }
+    lastPublishTime = millis();
+  }
 }
