@@ -389,7 +389,7 @@ export default function DashboardScreen({ navigation, route, userId, onGroupChan
           { name: 'Temperature', icon: 'device-thermostat', value: getLatestReading(0), type: 'temperature', screen: 'Temperature', suffix: '°C' },
           { name: 'Humidity', icon: 'water-drop', value: getLatestReading(1), type: 'humidity', screen: 'Humidity', suffix: '%' },
           { name: 'pH Level', icon: 'science', value: getLatestReading(2), type: 'pH', screen: 'PhLevel', suffix: '' },
-          { name: 'EC', icon: 'water', value: getLatestReading(5), type: 'EC', screen: 'EcLevel', suffix: '' },
+          { name: 'EC', icon: 'flash-on', value: getLatestReading(5), type: 'EC', screen: 'EcLevel', suffix: '' },
           { name: 'Light Intensity', icon: 'wb-sunny', value: getLatestReading(4), type: 'soilMoisture', screen: 'LightIntensity', suffix: ' Lux' },
           { name: 'Water Level', icon: 'water', value: getLatestReading(3), type: 'Water Level', screen: 'WaterLevel', suffix: '' },
         ].map((param, index) => (

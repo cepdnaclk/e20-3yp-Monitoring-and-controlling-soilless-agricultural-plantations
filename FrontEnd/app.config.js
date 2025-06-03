@@ -4,9 +4,10 @@ export default {
   expo: {
     name: "PlantPulse",
     slug: "PlantPulse",
-    version: "1.0.0",
+    version: "1.0.1",
     android: {
-      package: "com.sachiya.plantpulse" // 🔧 Use a unique identifier!
+      package: "com.sachiya.plantpulse",
+      versionCode: 2 // 🔧 Use a unique identifier!
     },
     extra: {
       eas: {
