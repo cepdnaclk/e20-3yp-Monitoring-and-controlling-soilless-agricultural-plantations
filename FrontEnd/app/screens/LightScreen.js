@@ -17,6 +17,17 @@ export default function LightIntensityScreen({ route }) {
   const [currentLight, setCurrentLight] = useState(null); // live sensor value
   const [isSetting, setIsSetting] = useState(false);
 
+  // Initialize with default data to prevent crashes
+  const defaultChartData = {
+    labels: Array(6).fill(''),
+    datasets: [{
+      data: Array(6).fill(0),
+      color: (opacity = 1) => `rgba(255, 206, 86, ${opacity})`,
+      strokeWidth: 2
+    }],
+    legend: ['Light Intensity']
+  };
+
   // 🔁 Fetch live light intensity from sensor_data/1
   useEffect(() => {
     if (!userId || !groupId) return;
@@ -27,12 +38,22 @@ export default function LightIntensityScreen({ route }) {
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           const data = docSnap.data();
-          if (data.light_intensity !== undefined) {
-            setCurrentLight(parseFloat(data.light_intensity));
+          if (data.light_intensity !== undefined && data.light_intensity !== null) {
+            const light = parseFloat(data.light_intensity);
+            if (!isNaN(light) && isFinite(light)) {
+              setCurrentLight(light);
+            } else {
+              setCurrentLight(null);
+            }
+          } else {
+            setCurrentLight(null);
           }
+        } else {
+          setCurrentLight(null);
         }
       } catch (error) {
         console.error('❌ Error fetching live light intensity:', error);
+        setCurrentLight(null);
       }
     };
 
@@ -41,7 +62,10 @@ export default function LightIntensityScreen({ route }) {
 
   // 📊 Fetch historical light data for chart
   useEffect(() => {
-    if (!userId || !groupId) return;
+    if (!userId || !groupId) {
+      setLoading(false);
+      return;
+    }
 
     const q = query(
       collection(db, `users/${userId}/deviceGroups/${groupId}/sensor_history`),
@@ -50,33 +74,95 @@ export default function LightIntensityScreen({ route }) {
     );
 
     const unsubscribe = onSnapshot(q, snapshot => {
-      const data = snapshot.docs
-        .filter(doc => doc.data().timestamp && doc.data().light_intensity !== undefined)
-        .map(doc => {
-          const d = doc.data();
-          return {
-            value: parseFloat(d.light_intensity),
-            timestamp: d.timestamp.toDate()
-          };
-        })
-        .reverse();
+      try {
+        if (snapshot.empty) {
+          console.log("No light intensity data found");
+          setChartData(defaultChartData);
+          setLoading(false);
+          return;
+        }
 
-      setChartData({
-        labels: data.map((d, index) =>
-          index % 6 === 0
-            ? d.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            : ''
-        ),
-        datasets: [
-          {
-            data: data.map(d => d.value),
-            color: (opacity = 1) => `rgba(255, 206, 86, ${opacity})`,
-            strokeWidth: 2
-          }
-        ],
-        legend: ['Light Intensity']
-      });
+        const cleanData = snapshot.docs
+          .filter(doc => {
+            const data = doc.data();
+            return data.timestamp && data.light_intensity !== undefined && data.light_intensity !== null;
+          })
+          .map(doc => {
+            const d = doc.data();
+            let light = parseFloat(d.light_intensity);
+            
+            // Ensure light intensity is a valid number
+            if (isNaN(light) || !isFinite(light) || light === null || light === undefined) {
+              light = 0;
+            }
+            
+            return {
+              value: light,
+              timestamp: d.timestamp.toDate()
+            };
+          })
+          .reverse(); // From oldest to newest
 
+        if (cleanData.length === 0) {
+          console.log("No valid light intensity data after filtering");
+          setChartData(defaultChartData);
+          setLoading(false);
+          return;
+        }
+
+        // Ensure we have at least 2 data points for the chart
+        const paddedData = [...cleanData];
+        
+        // Pad with zeros if we have less than 2 points
+        while (paddedData.length < 2) {
+          paddedData.push({
+            value: 0,
+            timestamp: new Date()
+          });
+        }
+
+        const validData = paddedData.map(d => {
+          const light = parseFloat(d.value);
+          return isNaN(light) || !isFinite(light) ? 0 : light;
+        });
+
+        // Double-check all values are valid numbers
+        const hasInvalidData = validData.some(val => 
+          val === null || val === undefined || isNaN(val) || !isFinite(val)
+        );
+
+        if (hasInvalidData) {
+          console.log("Found invalid light intensity data, using default");
+          setChartData(defaultChartData);
+          setLoading(false);
+          return;
+        }
+
+        setChartData({
+          labels: paddedData.map((d, index) =>
+            index % Math.max(1, Math.floor(paddedData.length / 6)) === 0
+              ? d.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              : ''
+          ),
+          datasets: [
+            {
+              data: validData,
+              color: (opacity = 1) => `rgba(255, 206, 86, ${opacity})`,
+              strokeWidth: 2
+            }
+          ],
+          legend: ['Light Intensity']
+        });
+
+        setLoading(false);
+      } catch (error) {
+        console.error("❌ Error processing light intensity data:", error);
+        setChartData(defaultChartData);
+        setLoading(false);
+      }
+    }, error => {
+      console.error("❌ Error fetching light intensity data:", error);
+      setChartData(defaultChartData);
       setLoading(false);
     });
 
@@ -93,12 +179,22 @@ export default function LightIntensityScreen({ route }) {
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           const data = docSnap.data();
-          if (data.lightTarget !== undefined) {
-            setLightTarget(data.lightTarget.toString());
+          if (data.lightTarget !== undefined && data.lightTarget !== null) {
+            const target = parseFloat(data.lightTarget);
+            if (!isNaN(target) && isFinite(target)) {
+              setLightTarget(target.toString());
+            } else {
+              setLightTarget('700'); // Default if invalid
+            }
+          } else {
+            setLightTarget('700'); // Default if missing
           }
+        } else {
+          setLightTarget('700'); // Default if document doesn't exist
         }
       } catch (error) {
         console.error('❌ Error fetching light target:', error);
+        setLightTarget('700'); // Default on error
       }
     };
 
@@ -108,12 +204,19 @@ export default function LightIntensityScreen({ route }) {
   // ✅ Set new target
   const handleSetValue = async () => {
     if (!userId || !lightTarget) return;
+
+    const targetValue = parseFloat(lightTarget);
+    if (isNaN(targetValue) || !isFinite(targetValue)) {
+      console.error("Invalid light intensity value:", lightTarget);
+      return;
+    }
+
     setIsSetting(true);
 
     try {
       const docRef = doc(db, `users/${userId}/deviceGroups/${groupId}/control_settings`, '1');
-      await setDoc(docRef, { lightTarget: parseFloat(lightTarget) }, { merge: true });
-      console.log('✅ Updated light intensity target:', lightTarget);
+      await setDoc(docRef, { lightTarget: targetValue }, { merge: true });
+      console.log('✅ Updated light intensity target:', targetValue);
     } catch (error) {
       console.error('❌ Error updating target:', error);
     }
@@ -121,31 +224,47 @@ export default function LightIntensityScreen({ route }) {
     setIsSetting(false);
   };
 
+  // Don't render chart until we have valid data
+  const shouldRenderChart = chartData && 
+    chartData.datasets && 
+    chartData.datasets[0] && 
+    chartData.datasets[0].data && 
+    chartData.datasets[0].data.length >= 2 &&
+    chartData.datasets[0].data.every(val => 
+      typeof val === 'number' && isFinite(val) && !isNaN(val)
+    );
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Light Intensity Monitoring</Text>
 
       {loading ? (
-        <ActivityIndicator size="large" color="#f1c40f" />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#f1c40f" />
+          <Text style={styles.loadingText}>Loading light intensity data...</Text>
+        </View>
+      ) : shouldRenderChart ? (
+        <LineChart
+          data={chartData}
+          width={screenWidth - 40}
+          height={220}
+          yAxisSuffix=" Lux"
+          chartConfig={{
+            backgroundGradientFrom: '#fff',
+            backgroundGradientTo: '#fff',
+            decimalPlaces: 0,
+            color: (opacity = 1) => `rgba(255, 206, 86, ${opacity})`,
+            labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+            style: { borderRadius: 16 }
+          }}
+          bezier
+          style={{ marginVertical: 10, borderRadius: 16 }}
+        />
       ) : (
-        chartData && (
-          <LineChart
-            data={chartData}
-            width={screenWidth - 40}
-            height={220}
-            yAxisSuffix=" Lux"
-            chartConfig={{
-              backgroundGradientFrom: '#fff',
-              backgroundGradientTo: '#fff',
-              decimalPlaces: 0,
-              color: (opacity = 1) => `rgba(255, 206, 86, ${opacity})`,
-              labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-              style: { borderRadius: 16 }
-            }}
-            bezier
-            style={{ marginVertical: 10, borderRadius: 16 }}
-          />
-        )
+        <View style={styles.noDataContainer}>
+          <Text style={styles.noDataText}>📊 No light intensity data available</Text>
+          <Text style={styles.noDataSubtext}>Check back later or ensure sensors are connected</Text>
+        </View>
       )}
 
       {/* 📟 Current + Target Display */}
@@ -173,8 +292,46 @@ export default function LightIntensityScreen({ route }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: COLORS.lightYellow || '#FFFDE7' },
-  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 10 },
+  container: { 
+    flex: 1, 
+    padding: 20, 
+    backgroundColor: COLORS.lightYellow || '#FFFDE7' 
+  },
+  title: { 
+    fontSize: 24, 
+    fontWeight: 'bold', 
+    marginBottom: 10 
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minHeight: 220
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666'
+  },
+  noDataContainer: {
+    height: 220,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f8f8f8',
+    borderRadius: 16,
+    marginVertical: 10
+  },
+  noDataText: {
+    fontSize: 18,
+    color: '#666',
+    fontWeight: 'bold'
+  },
+  noDataSubtext: {
+    fontSize: 14,
+    color: '#999',
+    marginTop: 5,
+    textAlign: 'center'
+  },
   currentValueContainer: {
     backgroundColor: '#fcf8e3',
     padding: 10,
@@ -182,8 +339,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20
   },
-  currentValueLabel: { fontSize: 16, fontWeight: 'bold', color: '#8a6d3b' },
-  currentValueText: { fontSize: 24, fontWeight: 'bold', color: '#8a6d3b' },
+  currentValueLabel: { 
+    fontSize: 16, 
+    fontWeight: 'bold', 
+    color: '#8a6d3b' 
+  },
+  currentValueText: { 
+    fontSize: 24, 
+    fontWeight: 'bold', 
+    color: '#8a6d3b' 
+  },
   input: {
     height: 50,
     borderColor: '#ccc',

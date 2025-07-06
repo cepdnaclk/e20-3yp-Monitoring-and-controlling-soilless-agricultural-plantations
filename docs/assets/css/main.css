@@ -1948,3 +1948,114 @@ section,
 .starter-section {
   /* Add your styles here */
 }
+
+/* Architecture Section Styles */
+.architecture .architecture-diagram img {
+  max-width: 100%;
+  height: auto;
+}
+
+.architecture .architecture-item {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  padding: 15px;
+  background: rgba(34, 139, 34, 0.1);
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  border-left: 4px solid #228B22;
+}
+
+.architecture .architecture-item:hover {
+  background: rgba(34, 139, 34, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(34, 139, 34, 0.15);
+}
+
+.architecture .architecture-icon {
+  margin-right: 15px;
+  min-width: 40px;
+}
+
+.architecture .architecture-icon i {
+  font-size: 24px;
+  color: #2E7D32;
+}
+
+.architecture .architecture-text h4 {
+  margin-bottom: 8px;
+  color: #1B5E20;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.architecture .architecture-text p {
+  margin: 0;
+  font-size: 14px;
+  color: #424242;
+}
+
+/* Data Flow Styles */
+.data-flow-section {
+  background: linear-gradient(135deg, #E8F5E8 0%, #F1F8E9 100%);
+  padding: 40px 20px;
+  border-radius: 10px;
+  border: 2px solid #C8E6C9;
+}
+
+.flow-step {
+  padding: 20px 10px;
+}
+
+.step-number {
+  width: 50px;
+  height: 50px;
+  background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 18px;
+  margin: 0 auto 15px;
+  box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+}
+
+.flow-step h5 {
+  color: #1B5E20;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.flow-step p {
+  font-size: 14px;
+  color: #424242;
+  margin: 0;
+}
+
+.architecture .section-title h2 {
+  color: #2E7D32;
+}
+
+.architecture .section-title p {
+  color: #4CAF50;
+}
+
+.architecture .architecture-content h3 {
+  color: #1B5E20;
+  margin-bottom: 25px;
+  font-weight: 700;
+}
+
+@media (max-width: 768px) {
+  .architecture .architecture-item {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .architecture .architecture-icon {
+    margin-right: 0;
+    margin-bottom: 10px;
+  }
+}
