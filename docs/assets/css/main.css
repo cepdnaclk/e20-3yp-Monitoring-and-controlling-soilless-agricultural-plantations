@@ -2059,3 +2059,89 @@ section,
     margin-bottom: 10px;
   }
 }
+/* Budget Section Styles - Enhanced specificity */
+.budget-table {
+  box-shadow: 0 4px 12px rgba(34, 139, 34, 0.15);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Force green header styling */
+.budget-table .table-green,
+.budget-table thead.table-green,
+.budget-table .table-green th {
+  background: linear-gradient(135deg, #1B5E20 0%, #2E7D32 100%) !important;
+  color: white !important;
+  border-color: #1B5E20 !important;
+}
+
+.budget-table .table-green th {
+  font-weight: 600;
+  padding: 15px 12px;
+}
+
+.budget-table tbody tr {
+  transition: background-color 0.3s ease;
+}
+
+.budget-table tbody tr:hover {
+  background-color: rgba(76, 175, 80, 0.1);
+}
+
+.budget-table tbody td {
+  padding: 12px;
+  border-color: #C8E6C9;
+  color: #424242;
+}
+
+.budget-table tbody tr:nth-child(even) {
+  background-color: rgba(232, 245, 232, 0.5);
+}
+
+/* Force green footer/total styling */
+.budget-table .table-total,
+.budget-table tfoot.table-total,
+.budget-table .table-total th {
+  background: linear-gradient(135deg, #1B5E20 0%, #2E7D32 100%) !important;
+  color: white !important;
+  border-color: #0D4E12 !important;
+}
+
+.budget-table .table-total th {
+  font-weight: 700;
+  padding: 15px 12px;
+  font-size: 16px;
+}
+
+.budget-table .total-amount {
+  font-size: 18px;
+  font-weight: 800;
+  color: #E8F5E8 !important;
+}
+
+#budget .section-title h2 {
+  color: #2E7D32;
+}
+
+/* Override Bootstrap's table-dark class */
+.budget-table thead th {
+  background: linear-gradient(135deg, #2E7D32 0%, #4CAF50 100%) !important;
+  color: white !important;
+  border-color: #1B5E20 !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .budget-table {
+    font-size: 14px;
+  }
+  
+  .budget-table .table-green th,
+  .budget-table .table-total th {
+    padding: 10px 8px;
+  }
+  
+  .budget-table tbody td {
+    padding: 8px;
+  }
+}
