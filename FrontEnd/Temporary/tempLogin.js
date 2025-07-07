@@ -7,14 +7,14 @@ import {
   StyleSheet,
   Alert 
 } from 'react-native';
-import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebaseConfig'; 
 import COLORS from '../config/colors';
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // Loading state
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -22,7 +22,7 @@ const LoginScreen = ({ navigation }) => {
       return;
     }
 
-    setLoading(true);
+    setLoading(true); // Start loading
 
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
@@ -31,55 +31,32 @@ const LoginScreen = ({ navigation }) => {
       console.log("✅ Logged in user:", user.uid);
 
       Alert.alert('Success', 'Logged in successfully!');
-      navigation.navigate('Home', { userId: user.uid });
+      navigation.navigate('Home', { userId: user.uid }); // Pass userId to HomeScreen
     } catch (error) {
       console.error("❌ Login Error:", error.message);
       let message = "Something went wrong. Please try again.";
-      switch (error.code) {
-        case 'auth/invalid-email':
-          message = "Invalid email format.";
-          break;
-        case 'auth/user-not-found':
-          message = "No user found with this email.";
-          break;
-        case 'auth/wrong-password':
-          message = "Incorrect password.";
-          break;
-        case 'auth/network-request-failed':
-          message = "Network error. Check your internet connection.";
-          break;
-        case 'auth/too-many-requests':
-          message = "Too many login attempts. Please try again later.";
-          break;
-      }
+switch (error.code) {
+  case 'auth/invalid-email':
+    message = "Invalid email format.";
+    break;
+  case 'auth/user-not-found':
+    message = "No user found with this email.";
+    break;
+  case 'auth/wrong-password':
+    message = "Incorrect password.";
+    break;
+  case 'auth/network-request-failed':
+    message = "Network error. Check your internet connection.";
+    break;
+  case 'auth/too-many-requests':
+    message = "Too many login attempts. Please try again later.";
+    break;
+}
 
-      Alert.alert('Login Failed', message);
+Alert.alert('Login Failed', message);
+
     } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleForgotPassword = async () => {
-    if (!email) {
-      Alert.alert('Reset Password', 'Please enter your email first.');
-      return;
-    }
-
-    try {
-      await sendPasswordResetEmail(auth, email);
-      Alert.alert('Reset Email Sent', 'Please check your inbox to reset your password.');
-    } catch (error) {
-      console.error("❌ Password Reset Error:", error.message);
-      let message = "Something went wrong. Please try again.";
-      switch (error.code) {
-        case 'auth/invalid-email':
-          message = "Invalid email format.";
-          break;
-        case 'auth/user-not-found':
-          message = "No user found with this email.";
-          break;
-      }
-      Alert.alert('Reset Failed', message);
+      setLoading(false); // Stop loading
     }
   };
 
@@ -107,15 +84,11 @@ const LoginScreen = ({ navigation }) => {
         secureTextEntry
         color="#000"
       />
-
-      <TouchableOpacity onPress={handleForgotPassword}>
-        <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-      </TouchableOpacity>
-
+      
       <TouchableOpacity 
         style={styles.registerButton} 
         onPress={handleLogin}
-        disabled={loading}
+        disabled={loading} // Disable button while logging in
       >
         <Text style={styles.buttonText}>
           {loading ? "Signing In..." : "Sign In"}
@@ -145,17 +118,12 @@ const styles = StyleSheet.create({
   input: {
     width: '100%',
     padding: 15,
-    marginBottom: 10,
+    marginBottom: 15,
     borderRadius: 8,
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#ddd',
     color: '#000',
-  },
-  forgotPasswordText: {
-    color: '#007bff',
-    alignSelf: 'flex-end',
-    marginBottom: 15,
   },
   registerButton: {
     width: '100%',
