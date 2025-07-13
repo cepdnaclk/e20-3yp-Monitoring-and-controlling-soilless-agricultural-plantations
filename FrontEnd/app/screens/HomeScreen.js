@@ -63,9 +63,9 @@ const HomeScreen = ({ route }) => {
         }}
       />
 
-      {/* Plantations */}
+      {/* Ideas */}
       <Tab.Screen
-        name="Plantations"
+        name="Ideas"
         component={LandingScreen}
         initialParams={{ userId }} // ✅ Pass userId
         options={{

@@ -1,69 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Dimensions } from 'react-native';
-import { LineChart } from 'react-native-chart-kit';
+import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity } from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 import COLORS from '../config/colors';
-import { collection, query, orderBy, limit, onSnapshot, doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
-
-const screenWidth = Dimensions.get("window").width;
 
 export default function HumidityScreen({ route }) {
   const { userId, groupId } = route.params;
   const [currentHumidity, setCurrentHumidity] = useState(null);
-  const [chartData, setChartData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [debugInfo, setDebugInfo] = useState('');
-
-  // Initialize with default data to prevent crashes
-  const defaultChartData = {
-    labels: Array(6).fill(''),
-    datasets: [{
-      data: Array(6).fill(0),
-      color: (opacity = 1) => `rgba(54, 162, 235, ${opacity})`,
-      strokeWidth: 2,
-    }],
-    legend: ["Humidity (%)"]
-  };
-
-  // Try to get current humidity from sensor_data first
-  useEffect(() => {
-    if (!userId || !groupId) return;
-
-    const fetchCurrentHumidity = async () => {
-      try {
-        const docRef = doc(db, `users/${userId}/deviceGroups/${groupId}/sensor_data`, "1");
-        const docSnap = await getDoc(docRef);
-        
-        console.log("🔍 Checking sensor_data document...");
-        
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          console.log("📊 sensor_data document:", data);
-          
-          if (data.humidity !== undefined && data.humidity !== null) {
-            const humidity = parseFloat(data.humidity);
-            if (!isNaN(humidity) && isFinite(humidity)) {
-              setCurrentHumidity(humidity);
-              setDebugInfo(`Found in sensor_data: ${humidity}%`);
-              console.log("✅ Current humidity from sensor_data:", humidity);
-            } else {
-              setDebugInfo(`Invalid humidity in sensor_data: ${data.humidity}`);
-            }
-          } else {
-            setDebugInfo('No humidity field in sensor_data');
-          }
-        } else {
-          setDebugInfo('sensor_data document does not exist');
-          console.log("❌ sensor_data document does not exist");
-        }
-      } catch (error) {
-        console.error("❌ Error fetching current humidity:", error);
-        setDebugInfo(`Error: ${error.message}`);
-      }
-    };
-
-    fetchCurrentHumidity();
-  }, [userId, groupId]);
+  const [showTipsInfo, setShowTipsInfo] = useState(false);
 
   useEffect(() => {
     if (!userId || !groupId) {
@@ -71,277 +17,591 @@ export default function HumidityScreen({ route }) {
       return;
     }
 
-    console.log("🔍 Starting humidity data fetch for:", { userId, groupId });
-
-    const q = query(
-      collection(db, `users/${userId}/deviceGroups/${groupId}/sensor_history`),
-      orderBy("timestamp", "desc"),
-      limit(24)
-    );
-
-    const unsubscribe = onSnapshot(q, snapshot => {
+    const fetchCurrentHumidity = async () => {
       try {
-        console.log("📦 Snapshot received, docs count:", snapshot.docs.length);
-        
-        if (snapshot.empty) {
-          console.log("❌ No humidity data found in sensor_history");
-          setChartData(defaultChartData);
-          setLoading(false);
-          return;
-        }
-
-        // Debug: Log all documents
-        snapshot.docs.forEach((doc, index) => {
-          const data = doc.data();
-          console.log(`📄 Doc ${index}:`, {
-            id: doc.id,
-            humidity: data.humidity,
-            timestamp: data.timestamp?.toDate?.(),
-            allFields: Object.keys(data)
-          });
-        });
-
-        const cleanData = snapshot.docs
-          .filter(doc => {
-            const data = doc.data();
-            const hasTimestamp = data.timestamp;
-            const hasHumidity = data.humidity !== undefined && data.humidity !== null;
-            
-            console.log(`🔍 Doc filter check:`, {
-              hasTimestamp,
-              hasHumidity,
-              humidity: data.humidity,
-              passed: hasTimestamp && hasHumidity
-            });
-            
-            return hasTimestamp && hasHumidity;
-          })
-          .map(doc => {
-            const d = doc.data();
-            let humidity = parseFloat(d.humidity);
-            
-            console.log(`🔢 Processing humidity:`, {
-              original: d.humidity,
-              parsed: humidity,
-              isValid: !isNaN(humidity) && isFinite(humidity)
-            });
-            
-            // Ensure humidity is a valid number
-            if (isNaN(humidity) || !isFinite(humidity) || humidity === null || humidity === undefined) {
-              humidity = 0;
+        const docRef = doc(db, `users/${userId}/deviceGroups/${groupId}/sensor_data`, "1");
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.humidity !== undefined && data.humidity !== null) {
+            const humidity = parseFloat(data.humidity);
+            if (!isNaN(humidity) && isFinite(humidity)) {
+              setCurrentHumidity(humidity);
+            } else {
+              setCurrentHumidity(null);
             }
-            
-            return {
-              humidity: humidity,
-              timestamp: d.timestamp.toDate()
-            };
-          })
-          .reverse(); // Sort oldest → newest
-
-        console.log("✅ Clean data count:", cleanData.length);
-
-        if (cleanData.length === 0) {
-          console.log("❌ No valid humidity data after filtering");
-          setChartData(defaultChartData);
-          setLoading(false);
-          return;
-        }
-
-        // Set current humidity from the latest valid reading if not already set
-        if (currentHumidity === null) {
-          const latestHumidity = cleanData[cleanData.length - 1].humidity;
-          if (typeof latestHumidity === 'number' && isFinite(latestHumidity) && !isNaN(latestHumidity)) {
-            setCurrentHumidity(latestHumidity);
-            setDebugInfo(`Found in sensor_history: ${latestHumidity}%`);
-            console.log("✅ Current humidity from sensor_history:", latestHumidity);
+          } else {
+            setCurrentHumidity(null);
           }
+        } else {
+          setCurrentHumidity(null);
         }
-
-        // Ensure we have at least 2 data points for the chart
-        const paddedData = [...cleanData];
-        
-        // Pad with zeros if we have less than 2 points
-        while (paddedData.length < 2) {
-          paddedData.push({
-            humidity: 0,
-            timestamp: new Date()
-          });
-        }
-
-        const validData = paddedData.map(d => {
-          const humidity = parseFloat(d.humidity);
-          return isNaN(humidity) || !isFinite(humidity) ? 0 : humidity;
-        });
-
-        // Double-check all values are valid numbers
-        const hasInvalidData = validData.some(val => 
-          val === null || val === undefined || isNaN(val) || !isFinite(val)
-        );
-
-        if (hasInvalidData) {
-          console.log("❌ Found invalid humidity data, using default");
-          setChartData(defaultChartData);
-          setLoading(false);
-          return;
-        }
-
-        setChartData({
-          labels: paddedData.map((d, index) =>
-            index % Math.max(1, Math.floor(paddedData.length / 6)) === 0
-              ? d.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-              : ""
-          ),
-          datasets: [
-            {
-              data: validData,
-              color: (opacity = 1) => `rgba(54, 162, 235, ${opacity})`,
-              strokeWidth: 2,
-            }
-          ],
-          legend: ["Humidity (%)"]
-        });
-
-        setLoading(false);
       } catch (error) {
-        console.error("❌ Error processing humidity data:", error);
-        setChartData(defaultChartData);
+        console.error("Error fetching current humidity:", error);
         setCurrentHumidity(null);
+      } finally {
         setLoading(false);
       }
-    }, error => {
-      console.error("❌ Error fetching humidity data:", error);
-      setChartData(defaultChartData);
-      setCurrentHumidity(null);
-      setLoading(false);
-    });
+    };
 
-    return () => unsubscribe();
+    fetchCurrentHumidity();
   }, [userId, groupId]);
 
-  // Don't render chart until we have valid data
-  const shouldRenderChart = chartData && 
-    chartData.datasets && 
-    chartData.datasets[0] && 
-    chartData.datasets[0].data && 
-    chartData.datasets[0].data.length >= 2 &&
-    chartData.datasets[0].data.every(val => 
-      typeof val === 'number' && isFinite(val) && !isNaN(val)
-    );
+  // Function to get humidity status and color
+  const getHumidityStatus = (humidity) => {
+    if (humidity === null || humidity === undefined) return { status: 'Unknown', color: '#999', icon: 'help-outline' };
+    
+    if (humidity >= 50 && humidity <= 70) {
+      return { status: 'Optimal', color: '#4CAF50', icon: 'check-circle' };
+    } else if (humidity >= 40 && humidity < 50) {
+      return { status: 'Low', color: '#FF9800', icon: 'warning' };
+    } else if (humidity > 70 && humidity <= 80) {
+      return { status: 'High', color: '#FF9800', icon: 'warning' };
+    } else if (humidity < 40) {
+      return { status: 'Too Dry', color: '#F44336', icon: 'error' };
+    } else {
+      return { status: 'Too Humid', color: '#F44336', icon: 'error' };
+    }
+  };
+
+  const humidityStatus = getHumidityStatus(currentHumidity);
+
+  const toggleTipsInfo = () => {
+    setShowTipsInfo(!showTipsInfo);
+  };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Humidity Monitoring</Text>
+    <ScrollView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.titleContainer}>
+          <Icon name="water-drop" size={24} color={COLORS.green} />
+          <Text style={styles.title}>Humidity Monitoring</Text>
+          <TouchableOpacity 
+            onPress={toggleTipsInfo}
+            style={[
+              styles.infoButton,
+              showTipsInfo && styles.infoButtonActive
+            ]}
+          >
+            <Icon 
+              name={showTipsInfo ? "info" : "info-outline"} 
+              size={18} 
+              color={showTipsInfo ? "#fff" : COLORS.green} 
+            />
+          </TouchableOpacity>
+        </View>
+      </View>
 
-      
-
+      {/* Current Humidity Display */}
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#3498db" />
+          <ActivityIndicator size="large" color={COLORS.green} />
           <Text style={styles.loadingText}>Loading humidity data...</Text>
         </View>
-      ) : shouldRenderChart ? (
-        <LineChart
-          data={chartData}
-          width={screenWidth - 40}
-          height={220}
-          yAxisSuffix="%"
-          yAxisInterval={1}
-          chartConfig={{
-            backgroundColor: "#f5f5f5",
-            backgroundGradientFrom: "#fff",
-            backgroundGradientTo: "#fff",
-            decimalPlaces: 1,
-            color: (opacity = 1) => `rgba(54, 162, 235, ${opacity})`,
-            labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-            style: { borderRadius: 10 },
-            propsForDots: { r: "5", strokeWidth: "2", stroke: "#4CAF50" },
-          }}
-          bezier
-          style={{ marginVertical: 10, borderRadius: 10 }}
-        />
       ) : (
-        <View style={styles.noDataContainer}>
-          <Text style={styles.noDataText}>📊 No humidity data available</Text>
-          <Text style={styles.noDataSubtext}>Check back later or ensure sensors are connected</Text>
+        <View style={styles.currentValueContainer}>
+          <View style={styles.humidityDisplay}>
+            <Icon 
+              name={humidityStatus.icon} 
+              size={32} 
+              color={humidityStatus.color} 
+            />
+            <View style={styles.humidityInfo}>
+              <Text style={styles.currentValueLabel}>Current Humidity</Text>
+              <Text style={[styles.currentValueText, { color: humidityStatus.color }]}>
+                {currentHumidity !== null ? `${currentHumidity.toFixed(1)}%` : "N/A"}
+              </Text>
+              <Text style={[styles.statusText, { color: humidityStatus.color }]}>
+                {humidityStatus.status}
+              </Text>
+            </View>
+          </View>
         </View>
       )}
 
-      <View style={styles.currentValueContainer}>
-        <Text style={styles.currentValueLabel}>Current Humidity:</Text>
-        <Text style={styles.currentValueText}>
-          {currentHumidity !== null ? `${currentHumidity.toFixed(1)}%` : "N/A"}
-        </Text>
+      {/* Conditional Tips Information */}
+      {showTipsInfo && (
+        <View style={styles.tipsContainer}>
+          <View style={styles.tipsHeader}>
+            <Icon name="lightbulb-outline" size={20} color={COLORS.green} />
+            <Text style={styles.tipsTitle}>Humidity Management Tips</Text>
+            <TouchableOpacity 
+              onPress={toggleTipsInfo}
+              style={styles.closeTipsButton}
+            >
+              <Icon name="close" size={16} color="#666" />
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.tipsText}>
+            • Use humidifiers in dry conditions to increase moisture{'\n'}
+            • Improve air circulation to prevent excessive humidity{'\n'}
+            • Group plants together to create natural humidity zones{'\n'}
+            • Water early morning to maintain optimal humidity levels{'\n'}
+            • Monitor for fungal issues in high humidity conditions
+          </Text>
+        </View>
+      )}
+
+      {/* Optimal Range Section */}
+      <View style={styles.rangeContainer}>
+        <View style={styles.rangeHeader}>
+          <Icon name="thermostat" size={20} color={COLORS.green} />
+          <Text style={styles.rangeTitle}>Optimal Humidity Range</Text>
+        </View>
+        <View style={styles.rangeDisplay}>
+          <Text style={styles.rangeValue}>50% - 70%</Text>
+          <Text style={styles.rangeDescription}>
+            This range provides ideal moisture conditions for most plant growth
+          </Text>
+        </View>
       </View>
-    </View>
+
+      {/* How Humidity Affects Plants */}
+      <View style={styles.educationSection}>
+        <View style={styles.sectionHeader}>
+          <Icon name="eco" size={20} color={COLORS.green} />
+          <Text style={styles.sectionTitle}>How Humidity Affects Plant Growth</Text>
+        </View>
+        <Text style={styles.description}>
+          Humidity levels directly impact plant transpiration, nutrient transport, and disease susceptibility. 
+          Maintaining proper humidity prevents stress and promotes healthy growth while reducing pest and disease risks.
+        </Text>
+
+        <View style={styles.effectsList}>
+          {[
+            { icon: 'air', text: 'Regulates water loss through plant leaves' },
+            { icon: 'local-shipping', text: 'Affects nutrient transport within the plant' },
+            { icon: 'bug-report', text: 'Influences disease and pest susceptibility' },
+            { icon: 'visibility', text: 'Controls stomatal opening and closing' }
+          ].map((effect, index) => (
+            <View key={index} style={styles.effectItem}>
+              <Icon name={effect.icon} size={16} color={COLORS.green} />
+              <Text style={styles.effectText}>{effect.text}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      {/* Humidity Range Guidelines */}
+      <View style={styles.educationSection}>
+        <View style={styles.sectionHeader}>
+          <Icon name="assessment" size={20} color={COLORS.green} />
+          <Text style={styles.sectionTitle}>Humidity Range Guidelines</Text>
+        </View>
+        
+        <View style={styles.rangeGuide}>
+          <View style={styles.rangeItem}>
+            <View style={[styles.rangeIndicator, { backgroundColor: '#4CAF50' }]} />
+            <View style={styles.rangeDetails}>
+              <Text style={styles.rangeLabel}>Optimal: 50% - 70%</Text>
+              <Text style={styles.rangeSubtext}>Perfect for growth and disease prevention</Text>
+            </View>
+          </View>
+          <View style={styles.rangeItem}>
+            <View style={[styles.rangeIndicator, { backgroundColor: '#FF9800' }]} />
+            <View style={styles.rangeDetails}>
+              <Text style={styles.rangeLabel}>Acceptable: 40% - 80%</Text>
+              <Text style={styles.rangeSubtext}>Plants can tolerate but may show stress</Text>
+            </View>
+          </View>
+          <View style={styles.rangeItem}>
+            <View style={[styles.rangeIndicator, { backgroundColor: '#F44336' }]} />
+            <View style={styles.rangeDetails}>
+              <Text style={styles.rangeLabel}>Critical: Below 30% or above 90%</Text>
+              <Text style={styles.rangeSubtext}>Immediate action required</Text>
+            </View>
+          </View>
+        </View>
+      </View>
+
+      {/* Natural Humidity Management */}
+      <View style={styles.educationSection}>
+        <View style={styles.sectionHeader}>
+          <Icon name="nature" size={20} color={COLORS.green} />
+          <Text style={styles.sectionTitle}>Natural Humidity Management</Text>
+        </View>
+        
+        <View style={styles.tipsList}>
+          <Text style={styles.tipsSubheading}>Increasing Humidity:</Text>
+          {[
+            'Group plants together to create micro-climates',
+            'Place water trays near plants for evaporation',
+            'Use pebble trays filled with water under pots',
+            'Mist plants early morning (avoid leaves in evening)',
+            'Install shade cloth to reduce evaporation'
+          ].map((tip, index) => (
+            <View key={index} style={styles.tipItem}>
+              <Icon name="water-drop" size={14} color="#2196F3" />
+              <Text style={styles.tipText}>{tip}</Text>
+            </View>
+          ))}
+
+          <Text style={[styles.tipsSubheading, { marginTop: 15 }]}>Reducing Humidity:</Text>
+          {[
+            'Improve air circulation with fans or vents',
+            'Space plants adequately for airflow',
+            'Water soil directly, avoid wetting leaves',
+            'Use dehumidifiers in enclosed spaces',
+            'Ensure proper drainage to prevent standing water'
+          ].map((tip, index) => (
+            <View key={index} style={styles.tipItem}>
+              <Icon name="air" size={14} color="#FF9800" />
+              <Text style={styles.tipText}>{tip}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      {/* Signs of Humidity Problems */}
+      <View style={styles.educationSection}>
+        <View style={styles.sectionHeader}>
+          <Icon name="warning" size={20} color={COLORS.green} />
+          <Text style={styles.sectionTitle}>Recognizing Humidity Issues</Text>
+        </View>
+        
+        <View style={styles.problemsList}>
+          <Text style={styles.problemsSubheading}>Low Humidity Signs:</Text>
+          {[
+            'Brown, crispy leaf edges and tips',
+            'Increased pest problems (spider mites)',
+            'Rapid soil drying and frequent watering needs',
+            'Stunted growth and wilting despite adequate water'
+          ].map((sign, index) => (
+            <View key={index} style={styles.problemItem}>
+              <Icon name="remove-circle" size={14} color="#F44336" />
+              <Text style={styles.problemText}>{sign}</Text>
+            </View>
+          ))}
+
+          <Text style={[styles.problemsSubheading, { marginTop: 15 }]}>High Humidity Signs:</Text>
+          {[
+            'Fungal diseases (powdery mildew, leaf spot)',
+            'Soft, rotting stems and roots',
+            'Slow drying soil and overwatering symptoms',
+            'Increased pest problems (fungus gnats, aphids)'
+          ].map((sign, index) => (
+            <View key={index} style={styles.problemItem}>
+              <Icon name="add-circle" size={14} color="#FF9800" />
+              <Text style={styles.problemText}>{sign}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      {/* Monitoring Best Practices */}
+      <View style={styles.educationSection}>
+        <View style={styles.sectionHeader}>
+          <Icon name="schedule" size={20} color={COLORS.green} />
+          <Text style={styles.sectionTitle}>Humidity Monitoring Schedule</Text>
+        </View>
+        
+        <View style={styles.monitoringList}>
+          {[
+            { time: 'Daily', action: 'Check humidity levels during peak hours (morning and evening)' },
+            { time: 'Weekly', action: 'Inspect plants for humidity-related stress signs' },
+            { time: 'Monthly', action: 'Clean and calibrate humidity monitoring equipment' },
+            { time: 'Seasonal', action: 'Adjust humidity management based on weather changes' }
+          ].map((item, index) => (
+            <View key={index} style={styles.monitoringItem}>
+              <View style={styles.timeLabel}>
+                <Text style={styles.timeText}>{item.time}</Text>
+              </View>
+              <Text style={styles.actionText}>{item.action}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    padding: 20, 
-    backgroundColor: COLORS.lightGreen || "#E8F5E9" 
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.lightGreen || "#E8F5E9"
   },
-  title: { 
-    fontSize: 24, 
-    fontWeight: 'bold', 
-    marginBottom: 10 
+  header: {
+    padding: 20,
+    paddingBottom: 10
   },
-  debugContainer: {
-    backgroundColor: '#fff3cd',
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 10
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between'
   },
-  debugText: {
-    fontSize: 12,
-    color: '#856404'
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: COLORS.green,
+    flex: 1,
+    marginLeft: 10
+  },
+  infoButton: {
+    padding: 8,
+    backgroundColor: '#E8F5E8',
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: COLORS.green,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 30,
+    minHeight: 30
+  },
+  infoButtonActive: {
+    backgroundColor: COLORS.green,
+    borderColor: COLORS.green
   },
   loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    minHeight: 220
+    padding: 40,
+    alignItems: 'center'
   },
   loadingText: {
     marginTop: 10,
     fontSize: 16,
     color: '#666'
   },
-  noDataContainer: {
-    height: 220,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f8f8f8',
-    borderRadius: 10,
-    marginVertical: 10
+  currentValueContainer: {
+    backgroundColor: "#fff",
+    margin: 20,
+    marginTop: 10,
+    borderRadius: 12,
+    padding: 20,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4
   },
-  noDataText: {
-    fontSize: 18,
+  humidityDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  humidityInfo: {
+    marginLeft: 15,
+    flex: 1
+  },
+  currentValueLabel: {
+    fontSize: 16,
     color: '#666',
-    fontWeight: 'bold'
+    marginBottom: 5
   },
-  noDataSubtext: {
+  currentValueText: {
+    fontSize: 32,
+    fontWeight: "bold"
+  },
+  statusText: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginTop: 5
+  },
+  tipsContainer: {
+    backgroundColor: '#fff3cd',
+    margin: 20,
+    marginTop: 0,
+    borderRadius: 8,
+    padding: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF9800'
+  },
+  tipsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    justifyContent: 'space-between'
+  },
+  tipsTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.green,
+    marginLeft: 8,
+    flex: 1
+  },
+  closeTipsButton: {
+    padding: 4,
+    borderRadius: 12,
+    backgroundColor: '#e9ecef'
+  },
+  tipsText: {
     fontSize: 14,
-    color: '#999',
-    marginTop: 5,
+    color: '#666',
+    lineHeight: 20
+  },
+  rangeContainer: {
+    backgroundColor: '#E3F2FD',
+    margin: 20,
+    borderRadius: 12,
+    padding: 20
+  },
+  rangeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15
+  },
+  rangeTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.green,
+    marginLeft: 8
+  },
+  rangeDisplay: {
+    alignItems: 'center'
+  },
+  rangeValue: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: COLORS.green,
+    marginBottom: 5
+  },
+  rangeDescription: {
+    fontSize: 14,
+    color: '#666',
     textAlign: 'center'
   },
-  currentValueContainer: {
-    backgroundColor: "#dff0d8",
-    padding: 10,
-    borderRadius: 8,
-    alignItems: "center",
-    marginTop: 20
+  educationSection: {
+    backgroundColor: '#fff',
+    margin: 20,
+    marginTop: 0,
+    borderRadius: 12,
+    padding: 20,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2
   },
-  currentValueLabel: { 
-    fontSize: 16, 
-    fontWeight: "bold", 
-    color: "#2c662d" 
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15
   },
-  currentValueText: { 
-    fontSize: 24, 
-    fontWeight: "bold", 
-    color: "#2c662d" 
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.green,
+    marginLeft: 8
   },
+  description: {
+    fontSize: 16,
+    color: '#333',
+    lineHeight: 24,
+    marginBottom: 20,
+    textAlign: 'justify'
+  },
+  effectsList: {
+    marginTop: 10
+  },
+  effectItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+    paddingRight: 10
+  },
+  effectText: {
+    fontSize: 14,
+    color: '#555',
+    marginLeft: 10,
+    flex: 1,
+    lineHeight: 20
+  },
+  rangeGuide: {
+    marginTop: 10
+  },
+  rangeItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15
+  },
+  rangeIndicator: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 12
+  },
+  rangeDetails: {
+    flex: 1
+  },
+  rangeLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333'
+  },
+  rangeSubtext: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2
+  },
+  tipsList: {
+    marginTop: 10
+  },
+  tipsSubheading: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.green,
+    marginBottom: 10
+  },
+  tipItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+    paddingRight: 10
+  },
+  tipText: {
+    fontSize: 14,
+    color: '#555',
+    marginLeft: 8,
+    flex: 1,
+    lineHeight: 18
+  },
+  problemsList: {
+    marginTop: 10
+  },
+  problemsSubheading: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.green,
+    marginBottom: 10
+  },
+  problemItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+    paddingRight: 10
+  },
+  problemText: {
+    fontSize: 14,
+    color: '#555',
+    marginLeft: 8,
+    flex: 1,
+    lineHeight: 18
+  },
+  monitoringList: {
+    marginTop: 10
+  },
+  monitoringItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 15,
+    paddingRight: 10
+  },
+  timeLabel: {
+    backgroundColor: COLORS.green,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    minWidth: 60,
+    alignItems: 'center'
+  },
+  timeText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#fff'
+  },
+  actionText: {
+    fontSize: 14,
+    color: '#555',
+    marginLeft: 12,
+    flex: 1,
+    lineHeight: 18
+  }
 });

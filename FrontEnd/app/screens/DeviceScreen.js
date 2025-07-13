@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, Alert, Modal,ScrollView } from 'react-native';
+import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, Alert, Modal, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -20,11 +20,14 @@ export default function DeviceScreen() {
   const [groupPickerVisible, setGroupPickerVisible] = useState(false);
   const [pendingDevice, setPendingDevice] = useState(null);
   const [groupMap, setGroupMap] = useState({});
+  const [showInstructions, setShowInstructions] = useState(false); // New state for instructions
 
   const navigation = useNavigation();
   const route = useRoute();
   const userId = route.params?.userId;
   const db = getFirestore();
+
+  // ... (keep all your existing useEffect and functions unchanged)
 
   useEffect(() => {
     if (!userId) return;
@@ -66,7 +69,7 @@ export default function DeviceScreen() {
       const groups = {};
       groupsSnapshot.docs.forEach(doc => {
         const groupData = doc.data();
-        groups[doc.id] = groupData.name || doc.id; // Use group name if available, otherwise use ID
+        groups[doc.id] = groupData.name || doc.id;
       });
       
       setGroupMap(groups);
@@ -75,80 +78,8 @@ export default function DeviceScreen() {
     }
   };
 
-  // Load devices from Firestore
-  const loadDevices = async () => {
-    if (!userId) return;
+  // ... (keep all your existing functions unchanged - handleQRCodeScan, handleAssignGroup, removeDevice)
 
-    try {
-      const userDevicesRef = collection(db, 'users', userId, 'devices');
-      const querySnapshot = await getDocs(userDevicesRef);
-      
-      const loadedDevices = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-
-      setDevices(loadedDevices);
-    } catch (error) {
-      console.log('Error fetching devices from Firestore:', error);
-    }
-  };
-
-  // Request Camera Permissions
-  const requestCameraPermission = async () => {
-    const { status } = await Camera.requestCameraPermissionsAsync();
-    setHasPermission(status === 'granted');
-  };
-
-  // Manually add a new device
-  const addDevice = async () => {
-    if (!deviceName.trim()) {
-      Alert.alert('Error', 'Device name cannot be empty');
-      return;
-    }
-
-    const newDevice = {
-      id: Date.now().toString(),
-      name: deviceName,
-      type: 'Custom Device',
-      status: 'Unknown',
-      connectivity: 'Unknown',
-      icon: 'device-thermostat',
-    };
-
-    const updatedDevices = [...devices, newDevice];
-    setDevices(updatedDevices);
-    await AsyncStorage.setItem('devices', JSON.stringify(updatedDevices));
-    
-    if (userId) {
-      try {
-        const userDevicesRef = collection(db, 'users', userId, 'devices');
-        await addDoc(userDevicesRef, newDevice);
-        console.log('Device added to Firestore');
-      } catch (error) {
-        console.error('Error adding device to Firestore:', error);
-      }
-    }
-    
-    setDeviceName('');
-  };
-
-  // Remove a device
-  const removeDevice = async (id) => {
-    if (!userId) return;
-
-    try {
-      const deviceDocRef = doc(db, 'users', userId, 'devices', id);
-      await deleteDoc(deviceDocRef);
-
-      Alert.alert('Success', 'Device removed successfully.');
-    } catch (error) {
-      console.error('Error removing device from Firestore:', error);
-      Alert.alert('Error', 'Failed to remove device.');
-    }
-  };
-
-  // Handle QR Code Scan
   const handleQRCodeScan = async ({ data }) => {
     if (scanned || processingQR) return;
 
@@ -176,7 +107,6 @@ export default function DeviceScreen() {
         return;
       }
 
-      // Device object to be saved
       const newDevice = {
         id: scannedData.id,
         name: scannedData.name,
@@ -220,202 +150,299 @@ export default function DeviceScreen() {
   };
 
   const handleAssignGroup = async (groupId, isNewGroup = false, groupName = null) => {
-  setGroupPickerVisible(false);
+    setGroupPickerVisible(false);
 
-  console.log('📌 handleAssignGroup triggered');
-  console.log('🧾 userId:', userId);
-  console.log('📦 groupId:', groupId);
-  console.log('🆕 isNewGroup:', isNewGroup);
-  console.log('📝 groupName:', groupName);
+    console.log('📌 handleAssignGroup triggered');
+    console.log('🧾 userId:', userId);
+    console.log('📦 groupId:', groupId);
+    console.log('🆕 isNewGroup:', isNewGroup);
+    console.log('📝 groupName:', groupName);
 
-  if (!pendingDevice || !userId) {
-    console.warn('⚠️ Missing device or user ID');
-    setPendingDevice(null);
-    return;
-  }
-
-  try {
-    const { device } = pendingDevice;
-    const deviceWithGroup = {
-      ...device,
-      groupId,
-      userId,
-    };
-
-    console.log('🆔 Device ID:', device.id); // Add this debug log
-
-    // Step 1: Save to global device list
-    const globalDeviceRef = doc(db, 'users', userId, 'devices', device.id);
-    await setDoc(globalDeviceRef, deviceWithGroup);
-    console.log('✅ Device saved to global path:', globalDeviceRef.path);
-
-    // Step 2: Save to group-specific devices subcollection
-    const groupDeviceRef = doc(db, 'users', userId, 'deviceGroups', groupId, 'devices', device.id);
-    await setDoc(groupDeviceRef, deviceWithGroup);
-    console.log('✅ Device saved to group path:', groupDeviceRef.path);
-
-    // Step 3: Create group document if new
-    const groupDocRef = doc(db, 'users', userId, 'deviceGroups', groupId);
-    const groupDocSnap = await getDoc(groupDocRef);
-
-    if (isNewGroup) {
-      await setDoc(groupDocRef, {
-        name: groupName,
-        createdAt: serverTimestamp()
-      });
-      console.log('✅ Group document created:', groupDocRef.path);
-    } else if (!groupDocSnap.exists()) {
-      console.log('ℹ️ Group did not exist, creating...');
-      await setDoc(groupDocRef, { createdAt: serverTimestamp() });
+    if (!pendingDevice || !userId) {
+      console.warn('⚠️ Missing device or user ID');
+      setPendingDevice(null);
+      return;
     }
 
-    // Step 4: ALWAYS initialize group and device defaults
-    console.log('🔧 Initializing group and device defaults...');
     try {
-      const initResult = await initializeGroupDefaults(userId, groupId, device.id);
-      if (initResult.success) {
-        console.log(`✅ Initialized group and device defaults: ${groupId}`);
-        console.log(`   - Success: ${initResult.results.success.length}`);
-        console.log(`   - Skipped: ${initResult.results.skipped.length}`);
-        console.log(`   - Errors: ${initResult.results.errors.length}`);
-      } else {
-        console.warn(`⚠️ Group/device initialized with some errors: ${groupId}`, initResult.results.errors);
+      const { device } = pendingDevice;
+      const deviceWithGroup = {
+        ...device,
+        groupId,
+        userId,
+      };
+
+      console.log('🆔 Device ID:', device.id);
+
+      const globalDeviceRef = doc(db, 'users', userId, 'devices', device.id);
+      await setDoc(globalDeviceRef, deviceWithGroup);
+      console.log('✅ Device saved to global path:', globalDeviceRef.path);
+
+      const groupDeviceRef = doc(db, 'users', userId, 'deviceGroups', groupId, 'devices', device.id);
+      await setDoc(groupDeviceRef, deviceWithGroup);
+      console.log('✅ Device saved to group path:', groupDeviceRef.path);
+
+      const groupDocRef = doc(db, 'users', userId, 'deviceGroups', groupId);
+      const groupDocSnap = await getDoc(groupDocRef);
+
+      if (isNewGroup) {
+        await setDoc(groupDocRef, {
+          name: groupName,
+          createdAt: serverTimestamp()
+        });
+        console.log('✅ Group document created:', groupDocRef.path);
+      } else if (!groupDocSnap.exists()) {
+        console.log('ℹ️ Group did not exist, creating...');
+        await setDoc(groupDocRef, { createdAt: serverTimestamp() });
       }
-    } catch (initError) {
-      console.error(`❌ Failed to initialize group/device defaults: ${groupId}`, initError);
+
+      console.log('🔧 Initializing group and device defaults...');
+      try {
+        const initResult = await initializeGroupDefaults(userId, groupId, device.id);
+        if (initResult.success) {
+          console.log(`✅ Initialized group and device defaults: ${groupId}`);
+          console.log(`   - Success: ${initResult.results.success.length}`);
+          console.log(`   - Skipped: ${initResult.results.skipped.length}`);
+          console.log(`   - Errors: ${initResult.results.errors.length}`);
+        } else {
+          console.warn(`⚠️ Group/device initialized with some errors: ${groupId}`, initResult.results.errors);
+        }
+      } catch (initError) {
+        console.error(`❌ Failed to initialize group/device defaults: ${groupId}`, initError);
+      }
+
+      if (isNewGroup) {
+        setGroupMap(prev => ({
+          ...prev,
+          [groupId]: groupName || groupId
+        }));
+      }
+
+      Alert.alert('Success', 'Device added to plantation successfully!');
+      setProcessingQR(false);
+      setScanned(false);
+    } catch (error) {
+      console.error('❌ Error assigning device to group:', error);
+      Alert.alert('Error', 'Failed to assign device to plantation. Please try again.');
+      setProcessingQR(false);
+      setScanned(false);
     }
 
-    // Remove all the manual creation steps (Steps 4-7) since initializeGroupDefaults handles them
-    // The following code is now redundant and can be removed:
-    /*
-    // Step 4: Ensure sensor_data exists
-    const sensorDataRef = doc(db, `users/${userId}/deviceGroups/${groupId}/sensor_data`, '1');
-    // ... (remove all manual creation steps)
-    */
+    setPendingDevice(null);
+  };
 
-    // Step 5: Update UI map if new group
-    if (isNewGroup) {
-      setGroupMap(prev => ({
-        ...prev,
-        [groupId]: groupName || groupId
-      }));
+  const removeDevice = async (id) => {
+    if (!userId) return;
+
+    try {
+      const deviceDocRef = doc(db, 'users', userId, 'devices', id);
+      await deleteDoc(deviceDocRef);
+
+      Alert.alert('Success', 'Device removed successfully.');
+    } catch (error) {
+      console.error('Error removing device from Firestore:', error);
+      Alert.alert('Error', 'Failed to remove device.');
     }
+  };
 
-    Alert.alert('Success', 'Device added to group successfully!');
-    setProcessingQR(false);
-    setScanned(false);
-  } catch (error) {
-    console.error('❌ Error assigning device to group:', error);
-    Alert.alert('Error', 'Failed to assign device to group. Please try again.');
-    setProcessingQR(false);
-    setScanned(false);
-  }
-
-  setPendingDevice(null);
-};
-
-
-
+  // Function to toggle instructions visibility
+  const toggleInstructions = () => {
+    setShowInstructions(!showInstructions);
+  };
 
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Manage Devices</Text>
-      </View>
-
-      <TextInput
-        style={styles.input}
-        placeholder="Enter device name"
-        placeholderTextColor="#aaa"
-        value={deviceName}
-        onChangeText={setDeviceName}
-      />
-
-      <TouchableOpacity style={styles.scanButton} onPress={() => setIsScanning(true)}>
-        <Text style={styles.scanButtonText}>Add Device</Text>
-      </TouchableOpacity>
-
-      <Modal 
-        visible={isScanning} 
-        animationType="slide"
-        onRequestClose={() => {
-          setIsScanning(false);
-          setScanned(false);
-          setProcessingQR(false);
-        }}
-      >
-        <View style={styles.fullScreen}>
-          {hasPermission === null ? (
-            <Text>Requesting camera permission...</Text>
-          ) : hasPermission === false ? (
-            <Text>No access to camera</Text>
-          ) : processingQR ? (
-            <View style={styles.successScreen}>
-              <Text style={styles.successText}>Processing Device...</Text>
-              <Text style={styles.successSubText}>Please select a group for your device</Text>
-            </View>
-          ) : (
-            <CameraView
-              style={styles.cameraView}
-              onBarcodeScanned={scanned ? undefined : handleQRCodeScan}
-              barcodeScannerSettings={{
-                barcodeTypes: ['qr'],
-              }}
-            />
-          )}
-          <TouchableOpacity 
-            style={styles.cancelButton} 
-            onPress={() => {
-              setIsScanning(false);
-              setScanned(false);
-              setProcessingQR(false);
-              setPendingDevice(null);
-            }}
-          >
-            <Text style={styles.cancelButtonText}>Cancel</Text>
-          </TouchableOpacity>
+        <View style={styles.header}>
+          <View style={styles.titleContainer}>
+            <Icon name="settings" size={24} color={COLORS.green} />
+            <Text style={styles.title}>Manage Devices</Text>
+            <TouchableOpacity 
+              onPress={toggleInstructions}
+              style={[
+                styles.infoButton,
+                showInstructions && styles.infoButtonActive
+              ]}
+            >
+              <Icon 
+                name={showInstructions ? "info" : "info-outline"} 
+                size={18} 
+                color={COLORS.green} 
+              />
+            </TouchableOpacity>
+          </View>
         </View>
-      </Modal>
 
-      <View style={styles.groupedContainer}>
-        {Object.entries(
-          devices.reduce((acc, device) => {
-            const group = device.groupId || 'ungrouped';
-            if (!acc[group]) acc[group] = [];
-            acc[group].push(device);
-            return acc;
-          }, {})
-        ).map(([groupId, groupDevices]) => (
-          <View key={groupId} style={styles.groupSection}>
-            <Text style={styles.groupTitle}>
-              {groupId === 'ungrouped'
-                ? 'Ungrouped Devices'
-                : `${groupMap[groupId] || groupId}`}
-            </Text>
-
-            {groupDevices.map((item) => (
-              <TouchableOpacity
-                key={item.id}
-                onPress={() => navigation.navigate('DeviceDetail', { device: item })}
+        {/* Conditional QR Scanning Instructions */}
+        {showInstructions && (
+          <View style={styles.instructionContainer}>
+            <View style={styles.instructionHeader}>
+              <Icon name="qr-code-scanner" size={20} color={COLORS.green} />
+              <Text style={styles.instructionTitle}>How to Add Devices</Text>
+              <TouchableOpacity 
+                onPress={toggleInstructions}
+                style={styles.closeInstructionsButton}
               >
-                <View style={styles.deviceItem}>
-                  <Icon
-                    name={item.icon || 'device-thermostat'}
-                    size={30}
-                    color={COLORS.green}
-                    style={styles.deviceIcon}
-                  />
-                  <Text style={styles.deviceText}>{item.name}</Text>
-                  <TouchableOpacity onPress={() => removeDevice(item.id)}>
-                    <Text style={styles.deleteText}>Remove</Text>
-                  </TouchableOpacity>
-                </View>
+                <Icon name="close" size={16} color="#666" />
               </TouchableOpacity>
+            </View>
+            <Text style={styles.instructionText}>
+              1. Tap "Scan Device QR Code" below{'\n'}
+              2. Point your camera at the QR code on your sensor device{'\n'}
+              3. Choose an existing plantation or create a new one{'\n'}
+              4. Your device will be added and ready for monitoring
+            </Text>
+          </View>
+        )}
+
+        {/* Device Count Display */}
+        <View style={styles.statsContainer}>
+          <View style={styles.statItem}>
+            <Icon name="devices" size={24} color={COLORS.green} />
+            <Text style={styles.statNumber}>{devices.length}</Text>
+            <Text style={styles.statLabel}>Total Devices</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Icon name="eco" size={24} color={COLORS.green} />
+            <Text style={styles.statNumber}>{Object.keys(groupMap).length}</Text>
+            <Text style={styles.statLabel}>Plantations</Text>
+          </View>
+        </View>
+
+        {/* Main Action Button */}
+        <TouchableOpacity 
+          style={styles.scanButton} 
+          onPress={() => setIsScanning(true)}
+        >
+          <Icon name="qr-code-scanner" size={24} color="#fff" style={styles.buttonIcon} />
+          <Text style={styles.scanButtonText}>Scan Device QR Code</Text>
+        </TouchableOpacity>
+
+        {/* ... (keep all your existing Modal and device list code unchanged) */}
+
+        {/* Camera Modal */}
+        <Modal 
+          visible={isScanning} 
+          animationType="slide"
+          onRequestClose={() => {
+            setIsScanning(false);
+            setScanned(false);
+            setProcessingQR(false);
+          }}
+        >
+          <View style={styles.fullScreen}>
+            {hasPermission === null ? (
+              <View style={styles.permissionScreen}>
+                <Icon name="camera" size={48} color="#fff" />
+                <Text style={styles.permissionText}>Requesting camera permission...</Text>
+              </View>
+            ) : hasPermission === false ? (
+              <View style={styles.permissionScreen}>
+                <Icon name="camera-off" size={48} color="#fff" />
+                <Text style={styles.permissionText}>Camera access denied</Text>
+                <Text style={styles.permissionSubText}>Please enable camera permissions in your device settings</Text>
+              </View>
+            ) : processingQR ? (
+              <View style={styles.successScreen}>
+                <Icon name="check-circle" size={64} color="#4CAF50" />
+                <Text style={styles.successText}>Device Scanned Successfully!</Text>
+                <Text style={styles.successSubText}>
+                  Now choose a plantation to assign this device to, or create a new plantation
+                </Text>
+              </View>
+            ) : (
+              <>
+                <CameraView
+                  style={styles.cameraView}
+                  onBarcodeScanned={scanned ? undefined : handleQRCodeScan}
+                  barcodeScannerSettings={{
+                    barcodeTypes: ['qr'],
+                  }}
+                />
+                <View style={styles.scanOverlay}>
+                  <View style={styles.scanInstructions}>
+                    <Icon name="center-focus-strong" size={32} color="#fff" />
+                    <Text style={styles.scanInstructionText}>
+                      Point your camera at the QR code on your device
+                    </Text>
+                  </View>
+                </View>
+              </>
+            )}
+            <TouchableOpacity 
+              style={styles.cancelButton} 
+              onPress={() => {
+                setIsScanning(false);
+                setScanned(false);
+                setProcessingQR(false);
+                setPendingDevice(null);
+              }}
+            >
+              <Icon name="close" size={20} color="#fff" />
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </Modal>
+
+        {/* Devices List */}
+        {devices.length === 0 ? (
+          <View style={styles.emptyStateContainer}>
+            <Icon name="devices" size={64} color="#ccc" />
+            <Text style={styles.emptyStateTitle}>No Devices Added Yet</Text>
+            <Text style={styles.emptyStateText}>
+              Scan your first device's QR code to start monitoring your plantation
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.groupedContainer}>
+            {Object.entries(
+              devices.reduce((acc, device) => {
+                const group = device.groupId || 'ungrouped';
+                if (!acc[group]) acc[group] = [];
+                acc[group].push(device);
+                return acc;
+              }, {})
+            ).map(([groupId, groupDevices]) => (
+              <View key={groupId} style={styles.groupSection}>
+                <View style={styles.groupHeader}>
+                  <Icon name="eco" size={20} color={COLORS.green} />
+                  <Text style={styles.groupTitle}>
+                    {groupId === 'ungrouped'
+                      ? 'Ungrouped Devices'
+                      : `${groupMap[groupId] || groupId}`}
+                  </Text>
+                  <Text style={styles.deviceCount}>({groupDevices.length})</Text>
+                </View>
+
+                {groupDevices.map((item) => (
+                  <TouchableOpacity
+                    key={item.id}
+                    onPress={() => navigation.navigate('DeviceDetail', { device: item })}
+                  >
+                    <View style={styles.deviceItem}>
+                      <Icon
+                        name={item.icon || 'device-thermostat'}
+                        size={30}
+                        color={COLORS.green}
+                        style={styles.deviceIcon}
+                      />
+                      <View style={styles.deviceInfo}>
+                        <Text style={styles.deviceText}>{item.name}</Text>
+                        <Text style={styles.deviceType}>{item.type}</Text>
+                      </View>
+                      <TouchableOpacity 
+                        onPress={() => removeDevice(item.id)}
+                        style={styles.removeButton}
+                      >
+                        <Icon name="delete" size={20} color="#ff4444" />
+                      </TouchableOpacity>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
             ))}
           </View>
-        ))}
-      </View>
+        )}
       </ScrollView>
 
       <GroupPickerModal
@@ -434,48 +461,188 @@ export default function DeviceScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: '#E8F5E9' },
-  title: { fontSize: 30, fontWeight: 'bold', color: COLORS.green },
-  header: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
-  input: {
-    height: 50,
-    borderColor: '#ddd',
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingLeft: 10,
-    color: '#333',
-    marginBottom: 10,
+  container: { 
+    flex: 1, 
+    padding: 20, 
+    backgroundColor: '#E8F5E9' 
   },
-  addButton: {
-    backgroundColor: '#447055',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 10,
+  header: { 
+    marginBottom: 20 
+  },
+  titleContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between'
   },
-  addButtonText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+  title: { 
+    fontSize: 28, 
+    fontWeight: 'bold', 
+    color: COLORS.green,
+    flex: 1,
+    marginLeft: 10
+  },
+  infoButton: {
+    padding: 8,
+    backgroundColor: '#F1F8E9',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#C8E6C9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 36,
+    minHeight: 36
+  },
+  infoButtonActive: {
+    backgroundColor: COLORS.green,
+    borderColor: COLORS.green
+  },
+  instructionContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.green,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3
+  },
+  instructionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    justifyContent: 'space-between'
+  },
+  instructionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.green,
+    marginLeft: 8,
+    flex: 1
+  },
+  closeInstructionsButton: {
+    padding: 4,
+    borderRadius: 12,
+    backgroundColor: '#f5f5f5'
+  },
+  instructionText: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 20
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20
+  },
+  statItem: {
+    alignItems: 'center'
+  },
+  statNumber: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: COLORS.green,
+    marginTop: 4
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2
+  },
   scanButton: {
     backgroundColor: '#2D6A4F',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 10,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
     alignItems: 'center',
-  },
-  scanButtonText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
-  fullScreen: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'black' },
-  cameraView: { flex: 1, width: '100%' },
-  cancelButton: { position: 'absolute', bottom: 40, backgroundColor: 'red', padding: 10, borderRadius: 8 },
-  cancelButtonText: { color: '#fff', fontSize: 16 },
-  deviceItem: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
+    justifyContent: 'center',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4
   },
-  deviceText: { color: '#333', fontSize: 18 },
-  deleteText: { color: 'red', fontSize: 16 },
+  buttonIcon: {
+    marginRight: 8
+  },
+  scanButtonText: { 
+    color: '#fff', 
+    fontSize: 18, 
+    fontWeight: 'bold' 
+  },
+  fullScreen: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    backgroundColor: 'black' 
+  },
+  cameraView: { 
+    flex: 1, 
+    width: '100%' 
+  },
+  scanOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  scanInstructions: {
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    padding: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 100
+  },
+  scanInstructionText: {
+    color: '#fff',
+    fontSize: 16,
+    textAlign: 'center',
+    marginTop: 10
+  },
+  permissionScreen: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#1E3837',
+    width: '100%',
+    padding: 20
+  },
+  permissionText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginTop: 16,
+    textAlign: 'center'
+  },
+  permissionSubText: {
+    color: '#ccc',
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 8
+  },
+  cancelButton: { 
+    position: 'absolute', 
+    bottom: 40, 
+    backgroundColor: '#ff4444', 
+    padding: 12, 
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  cancelButtonText: { 
+    color: '#fff', 
+    fontSize: 16,
+    marginLeft: 4
+  },
   successScreen: {
     flex: 1,
     justifyContent: 'center',
@@ -488,6 +655,7 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 24,
     fontWeight: 'bold',
+    marginTop: 16,
     marginBottom: 10,
     textAlign: 'center',
   },
@@ -495,33 +663,83 @@ const styles = StyleSheet.create({
     color: '#ccc',
     fontSize: 16,
     textAlign: 'center',
+    lineHeight: 22
   },
-  scanAgainButton: {
-    backgroundColor: '#2D6A4F',
-    padding: 15,
-    borderRadius: 8,
-    width: '80%', 
+  emptyStateContainer: {
     alignItems: 'center',
+    padding: 40,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    marginTop: 20
   },
-  scanAgainButtonText: {
-    color: '#fff',
-    fontSize: 18,
+  emptyStateTitle: {
+    fontSize: 20,
     fontWeight: 'bold',
+    color: '#666',
+    marginTop: 16,
+    marginBottom: 8
+  },
+  emptyStateText: {
+    fontSize: 14,
+    color: '#888',
+    textAlign: 'center',
+    lineHeight: 20
   },
   groupedContainer: {
     marginTop: 10,
   },
   groupSection: {
     marginBottom: 20,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    overflow: 'hidden'
+  },
+  groupHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#F1F8E9',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E8F5E9'
   },
   groupTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
-    color: COLORS.dark,
-    marginBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
-    paddingBottom: 5,
-    paddingLeft: 5,
+    color: COLORS.green,
+    marginLeft: 8,
+    flex: 1
   },
+  deviceCount: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: 'bold'
+  },
+  deviceItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  deviceIcon: {
+    marginRight: 12
+  },
+  deviceInfo: {
+    flex: 1
+  },
+  deviceText: { 
+    color: '#333', 
+    fontSize: 16,
+    fontWeight: '500'
+  },
+  deviceType: {
+    color: '#666',
+    fontSize: 12,
+    marginTop: 2
+  },
+  removeButton: {
+    padding: 8,
+    borderRadius: 6,
+    backgroundColor: '#ffebee'
+  }
 });

@@ -3,8 +3,8 @@ import json
 
 # Example device data
 device_data = {
-    "id": "6433",
-    "name": "Env sensor Unit",
+    "id": "25001",
+    "name": "Test Device 1",
     "type": "Controller",
     "status": "Inactive",
     "connectivity": "WiFi",
@@ -26,7 +26,7 @@ qr.make(fit=True)
 qr_image = qr.make_image(fill="black", back_color="white")
 
 # Save the QR Code as an image file
-qr_filename = "env_sensor6433.png"
+qr_filename = "test_qr.png"
 qr_image.save(qr_filename)
 
 print(f" QR Code saved as '{qr_filename}'")

@@ -70,7 +70,6 @@ export default function AlertsScreen({ userId, groupId }) {
 
     const newAlerts = [];
 
-    // Keep existing check function for pH and EC control commands
     const check = (param, current, target, inc, dec, threshold) => {
       const diff = current - target;
       const action = diff > 0 ? dec : inc;
@@ -99,71 +98,13 @@ export default function AlertsScreen({ userId, groupId }) {
       }
     };
 
-    // New function for warning-only alerts (no control commands)
-    const checkWarningOnly = (param, current, condition, message) => {
-      const key = `${groupId}-${param}-warning`;
-      
-      if (condition) {
-        if (!alertsMap.current.has(key)) {
-          alertsMap.current.set(key, {
-            id: key,
-            param,
-            action: null,
-            message,
-            timestamp: new Date().toLocaleString(),
-            type: 'warning'
-          });
-        }
-        newAlerts.push(alertsMap.current.get(key));
-      } else {
-        if (alertsMap.current.has(key)) {
-          alertsMap.current.delete(key);
-        }
-      }
-    };
-
-    // Keep existing pH and EC checks with control commands (unchanged)
     check("pH Level", sensor.ph, settings.pHTarget, "increase_pH", "decrease_pH", 1);
     check("EC Level", sensor.ec, settings.ecTarget, "increase_EC", "decrease_EC", 1);
     check("Soil Moisture", sensor.soil_moisture, settings.soilMoistureTarget, "increase_water_level", "decrease_water_level", 10);
+    check("Temperature", sensor.temperature, settings.tempTarget, "increase_temp", "decrease_temp", 2);
+    check("Humidity", sensor.humidity, settings.humidityTarget, "increase_humidity", "decrease_humidity", 5);
 
-    // NEW: Temperature warning-only alert (18-25°C ideal range)
-    checkWarningOnly(
-      "Temperature",
-      sensor.temperature,
-      sensor.temperature < 18 || sensor.temperature > 25,
-      `Temperature is out of ideal range! (Current: ${sensor.temperature}°C, Ideal: 18-25°C)`
-    );
-
-    // NEW: Humidity warning-only alert (50-70% ideal range)
-    checkWarningOnly(
-      "Humidity",
-      sensor.humidity,
-      sensor.humidity < 50 || sensor.humidity > 70,
-      `Humidity is out of ideal range! (Current: ${sensor.humidity}%, Ideal: 50-70%)`
-    );
-
-    // NEW: Light intensity warning-only alert (10000-50000 ideal range)
-    checkWarningOnly(
-      "Light Intensity",
-      sensor.light_intensity,
-      sensor.light_intensity < 10000 || sensor.light_intensity > 50000,
-      `Light intensity is out of ideal range! (Current: ${sensor.light_intensity}, Ideal: 10000-50000)`
-    );
-
-    // NEW: Water level categorical warning
-    checkWarningOnly(
-      "Water Level",
-      sensor.water_level,
-      ['Low', 'Medium', 'Critical', 'Empty', 'Overflow'].includes(sensor.water_level),
-      `Water level alert: ${sensor.water_level}`
-    );
-
-    // Remove the old temperature and humidity control commands
-    setAlerts((prev) => [
-      ...prev.filter(a => !a.id.endsWith("-alert") && !a.id.endsWith("-warning")), 
-      ...newAlerts
-    ]);
+    setAlerts((prev) => [...prev.filter(a => !a.id.endsWith("-alert")), ...newAlerts]);
   };
 
   const fetchAlerts = async (deviceIdMap) => {

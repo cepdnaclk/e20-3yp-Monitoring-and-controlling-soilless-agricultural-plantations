@@ -15,7 +15,7 @@ export default function DashboardScreen({ navigation, route, userId, onGroupChan
   const [historyChartData, setHistoryChartData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('day');
-  const [showPlantationInfo, setShowPlantationInfo] = useState(false);
+  const [showPlantationInfo, setShowPlantationInfo] = useState(false); // New state for plantation info
   const [dataAvailability, setDataAvailability] = useState({
     temperature: false,
     humidity: false,
@@ -55,6 +55,8 @@ export default function DashboardScreen({ navigation, route, userId, onGroupChan
     DECIMAL_PLACES: 1,
     WATER_LEVEL_DECIMAL_PLACES: 0
   };
+
+  // ... (keep all your existing helper functions unchanged)
 
   // Helper function to check data availability
   const checkDataAvailability = (data) => {
@@ -206,10 +208,11 @@ export default function DashboardScreen({ navigation, route, userId, onGroupChan
     const unsubscribe = onSnapshot(groupRef, (snapshot) => {
       const groupList = snapshot.docs.map(doc => ({
         id: doc.id,
-        name: doc.data().name || doc.id
+        name: doc.data().name || doc.id // Use name field if available, fallback to ID
       }));
       setGroups(groupList);
 
+      // Auto-select first group if none selected
       if (!selectedGroup && groupList.length > 0) {
         setSelectedGroup(groupList[0].id);
         if (onGroupChange) onGroupChange(groupList[0].id);
@@ -287,10 +290,12 @@ export default function DashboardScreen({ navigation, route, userId, onGroupChan
     let startDate, endDate;
     
     if (TEST_CONFIG.enabled) {
+      // TEST MODE - Using fixed date range
       startDate = new Date(TEST_CONFIG.startDate);
       endDate = new Date(TEST_CONFIG.endDate);
       console.log(`TEST MODE: ${TEST_CONFIG.description}`);
     } else {
+      // Production mode - Using proper date ranges
       const dateRange = getDateRange(timeRange);
       startDate = dateRange.startDate;
       endDate = dateRange.endDate;
@@ -337,6 +342,7 @@ export default function DashboardScreen({ navigation, route, userId, onGroupChan
           return;
         }
 
+        // Update data availability based on history data as well
         const historyAvailability = checkDataAvailability(allHistoryData);
         setDataAvailability(prev => ({
           temperature: prev.temperature || historyAvailability.temperature,
@@ -347,6 +353,7 @@ export default function DashboardScreen({ navigation, route, userId, onGroupChan
           water_level: prev.water_level || historyAvailability.water_level
         }));
 
+        // Sample data based on time range requirements
         const sampledHistoryData = sampleDataByTimeRange(allHistoryData, timeRange);
         
         console.log(`Sampled ${sampledHistoryData.length} data points from ${allHistoryData.length} total points for ${timeRange} view`);
@@ -355,10 +362,13 @@ export default function DashboardScreen({ navigation, route, userId, onGroupChan
           labels: sampledHistoryData.map(d => {
             const ts = d.timestamp;
             if (timeRange === 'day') {
+              // Show hour format (e.g., "14:00", "15:00")
               return ts.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             } else if (timeRange === 'week') {
+              // Show day format (e.g., "Mon", "Tue")
               return ts.toLocaleDateString([], { weekday: 'short' });
             } else if (timeRange === 'month') {
+              // Show month format (e.g., "Jan", "Feb")
               return ts.toLocaleDateString([], { month: 'short' });
             }
             return ts.toLocaleDateString();
@@ -423,6 +433,7 @@ export default function DashboardScreen({ navigation, route, userId, onGroupChan
     if (!chartData?.datasets[index]?.data) return 'N/A';
     let latestValue = chartData.datasets[index].data.slice(-1)[0];
 
+    // Special case for light intensity (index 4)
     if (index === 4 && latestValue === -2) {
       return 11245;
     }
@@ -460,9 +471,11 @@ export default function DashboardScreen({ navigation, route, userId, onGroupChan
   };
 
   const getChartLabels = (labels, timeRange) => {
+    // Show all labels since we're using specific sampling
     return labels;
   };
 
+  // Helper function to render chart title with icon
   const renderChartTitleWithIcon = (title, iconName, yAxisSuffix = '') => {
     return (
       <View style={styles.chartTitleContainer}>
@@ -544,6 +557,7 @@ export default function DashboardScreen({ navigation, route, userId, onGroupChan
     );
   };
 
+  // Function to toggle plantation info visibility
   const togglePlantationInfo = () => {
     setShowPlantationInfo(!showPlantationInfo);
   };
@@ -580,6 +594,7 @@ export default function DashboardScreen({ navigation, route, userId, onGroupChan
           </TouchableOpacity>
         </View>
 
+        {/* Conditional Plantation Information */}
         {showPlantationInfo && (
           <View style={styles.infoContainer}>
             <View style={styles.infoHeader}>
@@ -666,158 +681,63 @@ export default function DashboardScreen({ navigation, route, userId, onGroupChan
         </View>
       )}
 
-      {/* SEPARATED PARAMETER SECTIONS */}
-      
-      {/* Environmental Monitoring Section (View-Only) */}
-      <View style={styles.parameterSection}>
-        <View style={styles.sectionHeader}>
-          <Icon name="visibility" size={20} color={COLORS.green} />
-          <Text style={styles.sectionHeaderText}>Environmental Monitoring</Text>
-          <View style={styles.viewOnlyBadge}>
-            <Text style={styles.badgeText}>View Only</Text>
-          </View>
-        </View>
-        
-        <View style={styles.gridContainer}>
-          {[
-            { name: 'Temperature', icon: 'device-thermostat', value: getLatestReading(0), type: 'temperature', screen: 'Temperature', suffix: '°C', sensorType: 'temperature' },
-            { name: 'Humidity', icon: 'water-drop', value: getLatestReading(1), type: 'humidity', screen: 'Humidity', suffix: '%', sensorType: 'humidity' },
-            { name: 'Light Intensity', icon: 'wb-sunny', value: getLatestReading(4), type: 'soilMoisture', screen: 'LightIntensity', suffix: ' Lux', sensorType: 'light_intensity' },
-            { name: 'Water Level', icon: 'water', value: getLatestReading(3), type: 'Water Level', screen: 'WaterLevel', suffix: '', sensorType: 'water_level' },
-          ].map((param, index) => {
-            const hasData = dataAvailability[param.sensorType];
-            return (
-              <Card
-                key={index}
-                style={[
-                  styles.card,
-                  styles.viewOnlyCard,
-                  !hasData && styles.cardDisabled
-                ]}
-                onPress={() => handleCardPress(param.screen, param.sensorType, param.name)}
-              >
-                <Card.Content style={styles.cardContent}>
-                  <View style={styles.cardHeader}>
-                    <Icon 
-                      name={param.icon} 
-                      size={30} 
-                      color={hasData ? COLORS.green : '#ccc'} 
-                    />
-                    <Icon 
-                      name="info-outline" 
-                      size={14} 
-                      color="#2196F3" 
-                      style={styles.cardTypeIcon}
-                    />
-                  </View>
+      <View style={styles.gridContainer}>
+        {[
+          { name: 'Temperature', icon: 'device-thermostat', value: getLatestReading(0), type: 'temperature', screen: 'Temperature', suffix: '°C', sensorType: 'temperature' },
+          { name: 'Humidity', icon: 'water-drop', value: getLatestReading(1), type: 'humidity', screen: 'Humidity', suffix: '%', sensorType: 'humidity' },
+          { name: 'pH Level', icon: 'science', value: getLatestReading(2), type: 'pH', screen: 'PhLevel', suffix: '', sensorType: 'ph' },
+          { name: 'EC', icon: 'flash-on', value: getLatestReading(5), type: 'EC', screen: 'EcLevel', suffix: '', sensorType: 'ec' },
+          { name: 'Light Intensity', icon: 'wb-sunny', value: getLatestReading(4), type: 'soilMoisture', screen: 'LightIntensity', suffix: ' Lux', sensorType: 'light_intensity' },
+          { name: 'Water Level', icon: 'water', value: getLatestReading(3), type: 'Water Level', screen: 'WaterLevel', suffix: '', sensorType: 'water_level' },
+        ].map((param, index) => {
+          const hasData = dataAvailability[param.sensorType];
+          return (
+            <Card
+              key={index}
+              style={[
+                styles.card,
+                !hasData && styles.cardDisabled
+              ]}
+              onPress={() => handleCardPress(param.screen, param.sensorType, param.name)}
+            >
+              <Card.Content style={styles.cardContent}>
+                <Icon 
+                  name={param.icon} 
+                  size={30} 
+                  color={hasData ? COLORS.green : '#ccc'} 
+                />
+                <Text style={[
+                  styles.cardTitle,
+                  !hasData && styles.cardTitleDisabled
+                ]}>
+                  {param.name}
+                </Text>
+                <View style={styles.cardTextRow}>
                   <Text style={[
-                    styles.cardTitle,
-                    !hasData && styles.cardTitleDisabled
+                    styles.cardText,
+                    !hasData && styles.cardTextDisabled
                   ]}>
-                    {param.name}
+                    {hasData ? 
+                      (param.value !== 'N/A' ? param.value : 'N/A') + (param.value !== 'N/A' ? param.suffix : '') :
+                      'No Data'
+                    }
                   </Text>
-                  <View style={styles.cardTextRow}>
-                    <Text style={[
-                      styles.cardText,
-                      !hasData && styles.cardTextDisabled
-                    ]}>
-                      {hasData ? 
-                        (param.value !== 'N/A' ? param.value : 'N/A') + (param.value !== 'N/A' ? param.suffix : '') :
-                        'No Data'
-                      }
-                    </Text>
-                    <View
-                      style={[
-                        styles.statusDot, 
-                        { backgroundColor: hasData ? getStatusColor(param.value, param.type) : '#ccc' }
-                      ]}
-                    />
-                  </View>
-                  {!hasData && (
-                    <Text style={styles.noDataIndicator}>
-                      Tap for details
-                    </Text>
-                  )}
-                </Card.Content>
-              </Card>
-            );
-          })}
-        </View>
-      </View>
-
-      {/* Controllable Parameters Section */}
-      <View style={styles.parameterSection}>
-        <View style={styles.sectionHeader}>
-          <Icon name="tune" size={20} color={COLORS.green} />
-          <Text style={styles.sectionHeaderText}>Controllable Parameters</Text>
-          <View style={styles.controllableBadge}>
-            <Text style={styles.badgeText}>Adjustable</Text>
-          </View>
-        </View>
-        
-        <View style={styles.gridContainer}>
-          {[
-            { name: 'pH Level', icon: 'science', value: getLatestReading(2), type: 'pH', screen: 'PhLevel', suffix: '', sensorType: 'ph' },
-            { name: 'EC', icon: 'flash-on', value: getLatestReading(5), type: 'EC', screen: 'EcLevel', suffix: '', sensorType: 'ec' },
-          ].map((param, index) => {
-            const hasData = dataAvailability[param.sensorType];
-            return (
-              <Card
-                key={index}
-                style={[
-                  styles.card,
-                  styles.controllableCard,
-                  !hasData && styles.cardDisabled
-                ]}
-                onPress={() => handleCardPress(param.screen, param.sensorType, param.name)}
-              >
-                <Card.Content style={styles.cardContent}>
-                  <View style={styles.cardHeader}>
-                    <Icon 
-                      name={param.icon} 
-                      size={30} 
-                      color={hasData ? COLORS.green : '#ccc'} 
-                    />
-                    <Icon 
-                      name="settings" 
-                      size={14} 
-                      color="#FF9800" 
-                      style={styles.cardTypeIcon}
-                    />
-                  </View>
-                  <Text style={[
-                    styles.cardTitle,
-                    !hasData && styles.cardTitleDisabled
-                  ]}>
-                    {param.name}
+                  <View
+                    style={[
+                      styles.statusDot, 
+                      { backgroundColor: hasData ? getStatusColor(param.value, param.type) : '#ccc' }
+                    ]}
+                  />
+                </View>
+                {!hasData && (
+                  <Text style={styles.noDataIndicator}>
+                    Tap for details
                   </Text>
-                  <View style={styles.cardTextRow}>
-                    <Text style={[
-                      styles.cardText,
-                      !hasData && styles.cardTextDisabled
-                    ]}>
-                      {hasData ? 
-                        (param.value !== 'N/A' ? param.value : 'N/A') + (param.value !== 'N/A' ? param.suffix : '') :
-                        'No Data'
-                      }
-                    </Text>
-                    <View
-                      style={[
-                        styles.statusDot, 
-                        { backgroundColor: hasData ? getStatusColor(param.value, param.type) : '#ccc' }
-                      ]}
-                    />
-                  </View>
-                  {!hasData && (
-                    <Text style={styles.noDataIndicator}>
-                      Tap for details
-                    </Text>
-                  )}
-                </Card.Content>
-              </Card>
-            );
-          })}
-        </View>
+                )}
+              </Card.Content>
+            </Card>
+          );
+        })}
       </View>
     </ScrollView>
   );
@@ -962,46 +882,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8
   },
-  
-  // NEW STYLES FOR PARAMETER SEPARATION
-  parameterSection: {
-    marginBottom: 25
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 15,
-    paddingHorizontal: 5
-  },
-  sectionHeaderText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.green,
-    marginLeft: 8,
-    flex: 1
-  },
-  viewOnlyBadge: {
-    backgroundColor: '#E3F2FD',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#2196F3'
-  },
-  controllableBadge: {
-    backgroundColor: '#FFF3E0',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#FF9800'
-  },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#1976D2'
-  },
-  
   gridContainer: { 
     flexDirection: 'row', 
     flexWrap: 'wrap', 
@@ -1011,18 +891,10 @@ const styles = StyleSheet.create({
     width: '48%', 
     backgroundColor: '#fff', 
     padding: 10, 
-    marginVertical: 8, 
+    marginVertical: 10, 
     borderRadius: 12, 
     elevation: 3, 
     alignItems: 'center' 
-  },
-  viewOnlyCard: {
-    borderLeftWidth: 4,
-    borderLeftColor: '#2196F3'
-  },
-  controllableCard: {
-    borderLeftWidth: 4,
-    borderLeftColor: '#FF9800'
   },
   cardDisabled: {
     backgroundColor: '#f5f5f5',
@@ -1031,22 +903,11 @@ const styles = StyleSheet.create({
   cardContent: { 
     alignItems: 'center' 
   },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    width: '100%',
-    marginBottom: 5
-  },
-  cardTypeIcon: {
-    opacity: 0.7
-  },
   cardTitle: { 
     fontSize: 16, 
     fontWeight: 'bold', 
     color: COLORS.green, 
-    marginTop: 5,
-    textAlign: 'center'
+    marginTop: 5 
   },
   cardTitleDisabled: {
     color: '#999'
@@ -1054,8 +915,7 @@ const styles = StyleSheet.create({
   cardText: { 
     fontSize: 19, 
     color: '#555', 
-    marginTop: 3,
-    fontWeight: '600'
+    marginTop: 3 
   },
   cardTextDisabled: {
     color: '#999'
@@ -1069,7 +929,7 @@ const styles = StyleSheet.create({
     width: 10, 
     height: 10, 
     borderRadius: 5, 
-    marginLeft: 8 
+    marginLeft: 5 
   },
   noDataIndicator: {
     fontSize: 10,
