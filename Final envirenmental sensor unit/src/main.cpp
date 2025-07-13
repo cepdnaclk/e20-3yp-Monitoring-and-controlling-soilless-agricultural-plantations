@@ -10,11 +10,148 @@
 #include <Wire.h>
 
 // pin definitions
-#define tempSensor 15
-#define WaterLevel 33
-#define PHsensor 34
+// #define tempSensor 15
+// #define WaterLevel 33
+// #define PHsensor 34
 
-const char *mqttServer = "plant-pulse-ac718a95.a03.euc1.aws.hivemq.cloud";
+/*------------------------------------------------------ LED control Utility --------------------------------------------------------------*/
+
+#define RED_PIN 17
+#define GREEN_PIN 5
+#define BLUE_PIN 2
+
+enum LedColor
+{
+  OFF,
+  GREEN,
+  YELLOW,
+  BLUE,
+  ORANGE,
+  RED,
+  SOLID_RED
+};
+enum BlinkPattern
+{
+  SOLID,
+  SLOW,
+  FAST,
+  DOUBLE,
+  TRIPLE,
+  QUICK_DOUBLE
+};
+
+unsigned long previousMillis = 0;
+bool ledState = false;
+
+LedColor currentColor = OFF;
+BlinkPattern currentPattern = SOLID;
+
+void setColor(LedColor color, bool state = true)
+{
+  int r = 0, g = 0, b = 0;
+  if (!state)
+  {
+    analogWrite(RED_PIN, 0);
+    analogWrite(GREEN_PIN, 0);
+    analogWrite(BLUE_PIN, 0);
+    return;
+  }
+
+  switch (color)
+  {
+  case GREEN:
+    g = 255;
+    break;
+  case YELLOW:
+    g = 255;
+    r = 255;
+    break;
+  case BLUE:
+    b = 255;
+    break;
+  case ORANGE:
+    r = 255;
+    g = 100;
+    break;
+  case RED:
+  case SOLID_RED:
+    r = 255;
+    break;
+  case OFF:
+  default:
+    break;
+  }
+  analogWrite(RED_PIN, r);
+  analogWrite(GREEN_PIN, g);
+  analogWrite(BLUE_PIN, b);
+}
+
+/*-------------------------------------------------------------------------------------------------------------------------------------------*/
+
+/*---------------------------------------------------------------------- Blink Pattern Handler ----------------------------------------------*/
+
+void updateLEDPattern()
+{
+  unsigned long currentMillis = millis();
+  static int blinkCount = 0;
+
+  unsigned long interval = 1000; // default slow
+  switch (currentPattern)
+  {
+  case SLOW:
+    interval = 1000;
+    break;
+  case FAST:
+    interval = 300;
+    break;
+  case DOUBLE:
+    interval = 300;
+    break;
+  case QUICK_DOUBLE:
+    interval = 150;
+    break;
+  case TRIPLE:
+    interval = 200;
+    break;
+  case SOLID:
+    setColor(currentColor, true);
+    return;
+  }
+
+  if (currentMillis - previousMillis >= interval)
+  {
+    previousMillis = currentMillis;
+
+    if (currentPattern == DOUBLE && blinkCount >= 2)
+    {
+      setColor(OFF);
+      blinkCount = 0;
+      delay(800);
+    }
+    else if (currentPattern == TRIPLE && blinkCount >= 3)
+    {
+      setColor(OFF);
+      blinkCount = 0;
+      delay(800);
+    }
+    else if (currentPattern == QUICK_DOUBLE && blinkCount >= 2)
+    {
+      setColor(OFF);
+      blinkCount = 0;
+      delay(600);
+    }
+    else
+    {
+      ledState = !ledState;
+      setColor(currentColor, ledState);
+      blinkCount++;
+    }
+  }
+}
+
+/*--------------------------------------------------------------------------------------------------------------------------------------------*/
+
+const char *mqttServer = "23162742be094f829a5b3f6f29eb5dd6.s1.eu.hivemq.cloud";
 const int mqttPort = 8883;
 const char *mqttUser = "Tharusha";
 const char *mqttPassword = "Tharusha2001";
@@ -67,7 +204,8 @@ const long publishInterval = 10000;
 void testSSLConnection()
 {
   Serial.println("\\n=== Testing SSL Connection ===");
-
+  currentColor = YELLOW;
+  currentPattern = SLOW;
   // First test: Basic connectivity without SSL
   Serial.println("Step 1: Testing basic HTTP connectivity...");
   HTTPClient http;
@@ -76,6 +214,19 @@ void testSSLConnection()
   Serial.print("Basic HTTP test result: ");
   Serial.println(basicCode);
   http.end();
+
+  // LED Blink
+  if (basicCode > 0)
+  {
+    Serial.println("Basic HTTP endpoint is reachable");
+  }
+  else
+  {
+    Serial.println("Basic HTTP endpoint failed");
+    currentColor = RED;
+    currentPattern = FAST;
+    return;
+  }
 
   // Second test: Time sync check
   Serial.println("\\nStep 2: Checking system time...");
@@ -94,6 +245,15 @@ void testSSLConnection()
   Serial.print("Current time: ");
   Serial.println(ctime(&now));
 
+  // LED Blink
+  if (now < 8 * 3600 * 2)
+  {
+    Serial.println("Time sync failed, check NTP server");
+    currentColor = RED;
+    currentPattern = TRIPLE;
+    return;
+  }
+
   // Third test: SSL with setInsecure first
   Serial.println("\\nStep 3: Testing HTTPS with setInsecure()...");
   WiFiClientSecure testClient1;
@@ -109,6 +269,13 @@ void testSSLConnection()
     Serial.println("HTTPS endpoint is reachable");
   }
   https1.end();
+
+  // Blink LED
+  if (insecureCode > 0)
+  {
+    currentColor = ORANGE;
+    currentPattern = QUICK_DOUBLE; // fallback SSL used
+  }
 
   // Fourth test: SSL with certificate
   Serial.println("\\nStep 4: Testing HTTPS with certificate...");
@@ -131,6 +298,10 @@ void testSSLConnection()
     Serial.println("Response received:");
     Serial.println(response);
     Serial.println("SSL Connection with certificate successful!");
+
+    //LED Blink
+    currentColor = BLUE;
+    currentPattern = DOUBLE; // secure connection OK
   }
   else
   {
@@ -145,6 +316,18 @@ void testSSLConnection()
     int googleTest = https2.GET();
     Serial.print("Google.com test result: ");
     Serial.println(googleTest);
+
+    //LED Blink
+    if (googleTest > 0)
+    {
+      currentColor = ORANGE;
+      currentPattern = QUICK_DOUBLE;
+    }
+    else
+    {
+      currentColor = SOLID_RED;
+      currentPattern = FAST;
+    }
   }
 
   https2.end();
@@ -215,12 +398,9 @@ void publishSensorData()
   float humidity = dht.getHumidity();
   float light = LightMeter.readLightLevel();
 
-  
   String payload = "{\"temperature\": " + String(temperature, 2) +
-                 ", \"light_intensity\": " + String(light, 2) +
-                 ", \"humidity\": " + String(humidity, 2) + "}";
-
-
+                   ", \"light_intensity\": " + String(light, 2) +
+                   ", \"humidity\": " + String(humidity, 2) + "}";
 
   Serial.print("Publishing: ");
   Serial.println(payload);
@@ -264,16 +444,16 @@ SCL connect to GPIO22
 */
   Wire.begin(21, 22);
   LightMeter.begin();
-//   if (!LightMeter.begin(BH1750::CONTINUOUS_HIGH_RES_MODE, 0x23, &Wire)) {
-//   Serial.println("⚠️ Failed to initialize BH1750! Check wiring or sensor.");
-// } else {
-//   Serial.println("✅ BH1750 initialized successfully.");
-// }
-
+  //   if (!LightMeter.begin(BH1750::CONTINUOUS_HIGH_RES_MODE, 0x23, &Wire)) {
+  //   Serial.println("⚠️ Failed to initialize BH1750! Check wiring or sensor.");
+  // } else {
+  //   Serial.println("✅ BH1750 initialized successfully.");
+  // }
 }
 
 void loop()
 {
+  updateLEDPattern();
   client.loop();
 
   if (!client.connected())
