@@ -15,7 +15,7 @@ void setup(){
     GSM.println("AT+CMGF=1"); // Set SMS text mode
     delay(1000);
 
-    GSM.println("AT+CMGS=\"+94XXXXXXXXX\""); // Recipient number
+    GSM.println("AT+CMGS=\"+94719154938\""); // Recipient number
     delay(1000);
 
     GSM.print("Hello from ESP32 via GSM!"); // Message body
