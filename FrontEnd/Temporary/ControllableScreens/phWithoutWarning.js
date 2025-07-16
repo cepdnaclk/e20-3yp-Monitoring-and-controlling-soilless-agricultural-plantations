@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, TextInput, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity } from 'react-native';
 import { Button } from 'react-native-paper';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { doc, getDoc, setDoc } from "firebase/firestore";
@@ -13,7 +13,6 @@ export default function PhLevelScreen({ navigation, route }) {
   const [loading, setLoading] = useState(true);
   const [isSetting, setIsSetting] = useState(false);
   const [showTipsInfo, setShowTipsInfo] = useState(false);
-  const [phWarning, setPhWarning] = useState('');
 
   useEffect(() => {
     if (!userId || !groupId) {
@@ -65,7 +64,6 @@ export default function PhLevelScreen({ navigation, route }) {
             const target = parseFloat(data.pHTarget);
             if (!isNaN(target) && isFinite(target)) {
               setPhTarget(target.toString());
-              setPhWarning(getPhWarning(target.toString()));
             }
           }
         }
@@ -76,27 +74,6 @@ export default function PhLevelScreen({ navigation, route }) {
 
     fetchTarget();
   }, [userId, groupId]);
-
-  // Function to get pH warning message
-  const getPhWarning = (phValue) => {
-    const ph = parseFloat(phValue);
-    
-    if (isNaN(ph) || !isFinite(ph)) {
-      return "Please enter a valid pH value";
-    }
-    
-    if (ph < 5.5 || ph > 6.5) {
-      if (ph < 5.0) {
-        return "⚠️ Warning: This pH level is too acidic and may cause severe nutrient lockout";
-      } else if (ph > 7.5) {
-        return "⚠️ Warning: This pH level is too basic and may cause severe nutrient deficiencies";
-      } else {
-        return "⚠️ Warning: This pH level is outside the optimal range (5.5-6.5) for hydroponics";
-      }
-    }
-    
-    return '';
-  };
 
   // Function to get pH status and color
   const getPhStatus = (ph) => {
@@ -117,14 +94,15 @@ export default function PhLevelScreen({ navigation, route }) {
 
   const phStatus = getPhStatus(currentPhLevel);
 
-  // Handle pH target change with validation
-  const handlePhTargetChange = (value) => {
-    setPhTarget(value);
-    setPhWarning(getPhWarning(value));
-  };
+  const handleSetValue = async () => {
+    if (!userId || !phTarget) return;
 
-  // Update pH target in database
-  const updatePhTarget = async (targetValue) => {
+    const targetValue = parseFloat(phTarget);
+    if (isNaN(targetValue) || !isFinite(targetValue)) {
+      console.error("Invalid pH value:", phTarget);
+      return;
+    }
+
     setIsSetting(true);
 
     try {
@@ -133,55 +111,9 @@ export default function PhLevelScreen({ navigation, route }) {
       console.log('Updated pH target:', targetValue);
     } catch (error) {
       console.error('Error updating target:', error);
-      Alert.alert("Error", "Failed to update pH target. Please try again.");
     }
 
     setIsSetting(false);
-  };
-
-  const handleSetValue = async () => {
-    if (!userId || !phTarget) return;
-
-    const targetValue = parseFloat(phTarget);
-    if (isNaN(targetValue) || !isFinite(targetValue)) {
-      Alert.alert("Invalid pH", "Please enter a valid pH value");
-      return;
-    }
-
-    // Check if pH is outside optimal range
-    if (targetValue < 5.5 || targetValue > 6.5) {
-      let warningMessage = `The pH level ${targetValue} is outside the optimal range (5.5-6.5) for hydroponics.`;
-      
-      if (targetValue < 5.0) {
-        warningMessage += " This extremely acidic level may cause severe nutrient lockout and root damage.";
-      } else if (targetValue > 7.5) {
-        warningMessage += " This extremely basic level may cause severe nutrient deficiencies.";
-      } else {
-        warningMessage += " This may affect nutrient uptake and plant health.";
-      }
-      
-      warningMessage += " Do you want to continue?";
-
-      Alert.alert(
-        "pH Warning",
-        warningMessage,
-        [
-          {
-            text: "Cancel",
-            style: "cancel"
-          },
-          {
-            text: "Set Anyway",
-            style: "destructive",
-            onPress: () => updatePhTarget(targetValue)
-          }
-        ]
-      );
-      return;
-    }
-
-    // If pH is in optimal range, set directly
-    updatePhTarget(targetValue);
   };
 
   const toggleTipsInfo = () => {
@@ -248,36 +180,19 @@ export default function PhLevelScreen({ navigation, route }) {
           Set your target pH level for optimal nutrient uptake in hydroponic systems
         </Text>
         <TextInput
-          style={[
-            styles.input,
-            phWarning ? styles.inputWarning : null
-          ]}
+          style={styles.input}
           keyboardType="numeric"
           value={phTarget}
-          onChangeText={handlePhTargetChange}
+          onChangeText={setPhTarget}
           placeholder="Enter desired pH level"
         />
-        
-        {/* Warning Display */}
-        {phWarning ? (
-          <View style={styles.warningContainer}>
-            <Icon name="warning" size={16} color="#F44336" />
-            <Text style={styles.warningText}>{phWarning}</Text>
-          </View>
-        ) : null}
-        
         <Button 
           mode="contained" 
           onPress={handleSetValue} 
           disabled={isSetting}
-          style={[
-            styles.setButton,
-            phWarning ? styles.setButtonWarning : null
-          ]}
+          style={styles.setButton}
         >
-          {isSetting ? 'Setting...' : 
-           phWarning ? `Set ${phTarget} pH (Not Recommended)` : 
-           `Set to ${phTarget} pH`}
+          {isSetting ? 'Setting...' : `Set to ${phTarget} pH`}
         </Button>
       </View>
 
@@ -624,33 +539,8 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     backgroundColor: '#f9f9f9'
   },
-  inputWarning: {
-    borderColor: '#F44336',
-    borderWidth: 2,
-    backgroundColor: '#ffebee'
-  },
-  warningContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ffebee',
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 15,
-    borderLeftWidth: 4,
-    borderLeftColor: '#F44336'
-  },
-  warningText: {
-    fontSize: 14,
-    color: '#F44336',
-    marginLeft: 8,
-    flex: 1,
-    lineHeight: 18
-  },
   setButton: {
     backgroundColor: COLORS.green
-  },
-  setButtonWarning: {
-    backgroundColor: '#FF9800'
   },
   tipsContainer: {
     backgroundColor: '#fff3cd',

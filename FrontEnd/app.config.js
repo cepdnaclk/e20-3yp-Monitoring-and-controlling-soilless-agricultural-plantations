@@ -5,6 +5,7 @@ export default {
     name: "PlantPulse",
     slug: "PlantPulse",
     version: "1.0.3",
+    icon: "./app/assets/icon.png",
     android: {
       package: "com.sachiya.plantpulse",
       versionCode: 3 // 🔧 Use a unique identifier!

@@ -29,7 +29,7 @@ export default function DashboardScreen({ navigation, route, userId, onGroupChan
 
   // TEST MODE CONFIGURATION
   const TEST_CONFIG = {
-    enabled: true, // Set to false for production
+    enabled: false, // Set to false for production
     startDate: '2025-05-31T00:00:00',
     endDate: '2025-06-03T23:59:59',
     description: 'May 31 - June 3, 2025'
@@ -504,7 +504,7 @@ export default function DashboardScreen({ navigation, route, userId, onGroupChan
         {renderChartTitleWithIcon(title, iconName, yAxisSuffix)}
         {historyChartData.totalDataPoints && historyChartData.displayedDataPoints && (
           <Text style={styles.dataPointsInfo}>
-            Showing {historyChartData.displayedDataPoints} of {historyChartData.totalDataPoints} data points ({viewDescription[timeRange]})
+            
           </Text>
         )}
         <LineChart

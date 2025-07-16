@@ -3,7 +3,7 @@ import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, Alert, M
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { Camera, CameraView } from 'expo-camera';
 import { getFirestore, collection, doc, setDoc, addDoc, getDocs, getDoc, deleteDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import COLORS from '../config/colors';
 import devicesData from '../config/devices';
@@ -13,19 +13,21 @@ import { initializeGroupDefaults } from '../utils/initializeGroupDefaults';
 export default function DeviceScreen() {
   const [deviceName, setDeviceName] = useState('');
   const [devices, setDevices] = useState([]);
-  const [permission, requestPermission] = useCameraPermissions();
+  const [hasPermission, setHasPermission] = useState(null);
   const [isScanning, setIsScanning] = useState(false);
   const [scanned, setScanned] = useState(false);
   const [processingQR, setProcessingQR] = useState(false);
   const [groupPickerVisible, setGroupPickerVisible] = useState(false);
   const [pendingDevice, setPendingDevice] = useState(null);
   const [groupMap, setGroupMap] = useState({});
-  const [showInstructions, setShowInstructions] = useState(false);
+  const [showInstructions, setShowInstructions] = useState(false); // New state for instructions
 
   const navigation = useNavigation();
   const route = useRoute();
   const userId = route.params?.userId;
   const db = getFirestore();
+
+  // ... (keep all your existing useEffect and functions unchanged)
 
   useEffect(() => {
     if (!userId) return;
@@ -34,6 +36,12 @@ export default function DeviceScreen() {
     
     console.log('DeviceScreen: User ID:', userId);
     
+    // Request camera permissions
+    (async () => {
+      const { status } = await Camera.requestCameraPermissionsAsync();
+      setHasPermission(status === 'granted');
+    })();
+
     // Load group names for display
     loadGroupNames();
 
@@ -70,14 +78,15 @@ export default function DeviceScreen() {
     }
   };
 
-  const handleQRCodeScan = async (scanningResult) => {
-    if (scanned || processingQR || !scanningResult.data) return;
+  // ... (keep all your existing functions unchanged - handleQRCodeScan, handleAssignGroup, removeDevice)
+
+  const handleQRCodeScan = async ({ data }) => {
+    if (scanned || processingQR) return;
 
     setScanned(true);
     setProcessingQR(true);
 
     try {
-      const data = scanningResult.data;
       console.log('Processing QR code data:', data);
       let scannedData;
 
@@ -86,13 +95,15 @@ export default function DeviceScreen() {
       } catch (e) {
         console.error('Failed to parse QR data:', e);
         Alert.alert('Invalid QR Code', 'The scanned QR code contains invalid JSON data.');
-        resetScanner();
+        setProcessingQR(false);
+        setScanned(false);
         return;
       }
 
       if (!scannedData.id || !scannedData.name || !scannedData.type) {
         Alert.alert('Invalid QR Code', 'The scanned QR code does not contain valid device information.');
-        resetScanner();
+        setProcessingQR(false);
+        setScanned(false);
         return;
       }
 
@@ -119,7 +130,8 @@ export default function DeviceScreen() {
 
         if (existingDevice.exists()) {
           Alert.alert('Duplicate Device', 'This device already exists.');
-          resetScanner();
+          setProcessingQR(false);
+          setScanned(false);
           return;
         }
 
@@ -132,13 +144,9 @@ export default function DeviceScreen() {
     } catch (error) {
       Alert.alert('Error', 'Failed to process QR code.');
       console.error('QR Scan Error:', error);
-      resetScanner();
+      setProcessingQR(false);
+      setScanned(false);
     }
-  };
-
-  const resetScanner = () => {
-    setProcessingQR(false);
-    setScanned(false);
   };
 
   const handleAssignGroup = async (groupId, isNewGroup = false, groupName = null) => {
@@ -211,11 +219,13 @@ export default function DeviceScreen() {
       }
 
       Alert.alert('Success', 'Device added to plantation successfully!');
-      resetScanner();
+      setProcessingQR(false);
+      setScanned(false);
     } catch (error) {
       console.error('❌ Error assigning device to group:', error);
       Alert.alert('Error', 'Failed to assign device to plantation. Please try again.');
-      resetScanner();
+      setProcessingQR(false);
+      setScanned(false);
     }
 
     setPendingDevice(null);
@@ -235,31 +245,9 @@ export default function DeviceScreen() {
     }
   };
 
+  // Function to toggle instructions visibility
   const toggleInstructions = () => {
     setShowInstructions(!showInstructions);
-  };
-
-  const handleScanPress = async () => {
-    if (!permission) {
-      // Request permission first
-      const result = await requestPermission();
-      if (result.granted) {
-        setIsScanning(true);
-        setScanned(false);
-      }
-    } else if (permission.granted) {
-      setIsScanning(true);
-      setScanned(false);
-    } else {
-      Alert.alert('Permission Required', 'Camera permission is required to scan QR codes.');
-    }
-  };
-
-  const closeCameraModal = () => {
-    setIsScanning(false);
-    setScanned(false);
-    setProcessingQR(false);
-    setPendingDevice(null);
   };
 
   return (
@@ -324,30 +312,35 @@ export default function DeviceScreen() {
         {/* Main Action Button */}
         <TouchableOpacity 
           style={styles.scanButton} 
-          onPress={handleScanPress}
+          onPress={() => setIsScanning(true)}
         >
           <Icon name="qr-code-scanner" size={24} color="#fff" style={styles.buttonIcon} />
           <Text style={styles.scanButtonText}>Scan Device QR Code</Text>
         </TouchableOpacity>
 
+        {/* ... (keep all your existing Modal and device list code unchanged) */}
+
         {/* Camera Modal */}
         <Modal 
           visible={isScanning} 
           animationType="slide"
-          onRequestClose={closeCameraModal}
+          onRequestClose={() => {
+            setIsScanning(false);
+            setScanned(false);
+            setProcessingQR(false);
+          }}
         >
           <View style={styles.fullScreen}>
-            {!permission?.granted ? (
+            {hasPermission === null ? (
+              <View style={styles.permissionScreen}>
+                <Icon name="camera" size={48} color="#fff" />
+                <Text style={styles.permissionText}>Requesting camera permission...</Text>
+              </View>
+            ) : hasPermission === false ? (
               <View style={styles.permissionScreen}>
                 <Icon name="camera-off" size={48} color="#fff" />
-                <Text style={styles.permissionText}>Camera access needed</Text>
-                <Text style={styles.permissionSubText}>Please enable camera permissions to scan QR codes</Text>
-                <TouchableOpacity 
-                  onPress={requestPermission}
-                  style={styles.permissionButton}
-                >
-                  <Text style={styles.permissionButtonText}>Grant Permission</Text>
-                </TouchableOpacity>
+                <Text style={styles.permissionText}>Camera access denied</Text>
+                <Text style={styles.permissionSubText}>Please enable camera permissions in your device settings</Text>
               </View>
             ) : processingQR ? (
               <View style={styles.successScreen}>
@@ -361,10 +354,9 @@ export default function DeviceScreen() {
               <>
                 <CameraView
                   style={styles.cameraView}
-                  facing="back"
                   onBarcodeScanned={scanned ? undefined : handleQRCodeScan}
                   barcodeScannerSettings={{
-                    barcodeTypes: ['qr', 'pdf417'],
+                    barcodeTypes: ['qr'],
                   }}
                 />
                 <View style={styles.scanOverlay}>
@@ -379,7 +371,12 @@ export default function DeviceScreen() {
             )}
             <TouchableOpacity 
               style={styles.cancelButton} 
-              onPress={closeCameraModal}
+              onPress={() => {
+                setIsScanning(false);
+                setScanned(false);
+                setProcessingQR(false);
+                setPendingDevice(null);
+              }}
             >
               <Icon name="close" size={20} color="#fff" />
               <Text style={styles.cancelButtonText}>Cancel</Text>
@@ -630,19 +627,7 @@ const styles = StyleSheet.create({
     color: '#ccc',
     fontSize: 14,
     textAlign: 'center',
-    marginTop: 8,
-    marginBottom: 20
-  },
-  permissionButton: {
-    backgroundColor: COLORS.green,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 8
-  },
-  permissionButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold'
+    marginTop: 8
   },
   cancelButton: { 
     position: 'absolute', 

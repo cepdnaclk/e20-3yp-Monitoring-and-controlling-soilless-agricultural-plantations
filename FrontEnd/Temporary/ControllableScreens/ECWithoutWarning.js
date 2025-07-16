@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, TextInput, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity } from 'react-native';
 import { Button } from 'react-native-paper';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { doc, getDoc, setDoc } from "firebase/firestore";
@@ -13,7 +13,6 @@ export default function EcLevelScreen({ navigation, route }) {
   const [loading, setLoading] = useState(true);
   const [isSetting, setIsSetting] = useState(false);
   const [showTipsInfo, setShowTipsInfo] = useState(false);
-  const [ecWarning, setEcWarning] = useState('');
 
   useEffect(() => {
     if (!userId || !groupId) {
@@ -65,7 +64,6 @@ export default function EcLevelScreen({ navigation, route }) {
             const target = parseFloat(data.ecTarget);
             if (!isNaN(target) && isFinite(target)) {
               setEcTarget(target.toString());
-              setEcWarning(getEcWarning(target.toString()));
             }
           }
         }
@@ -76,27 +74,6 @@ export default function EcLevelScreen({ navigation, route }) {
 
     fetchTarget();
   }, [userId, groupId]);
-
-  // Function to get EC warning message
-  const getEcWarning = (ecValue) => {
-    const ec = parseFloat(ecValue);
-    
-    if (isNaN(ec) || !isFinite(ec)) {
-      return "Please enter a valid EC value";
-    }
-    
-    if (ec < 1.8 || ec > 3.0) {
-      if (ec < 1.2) {
-        return "⚠️ Warning: This EC level is too low and may cause severe nutrient deficiencies";
-      } else if (ec > 4.0) {
-        return "⚠️ Warning: This EC level is too high and may cause nutrient burn and salt buildup";
-      } else {
-        return "⚠️ Warning: This EC level is outside the optimal range (1.8-3.0 mS/cm) for hydroponics";
-      }
-    }
-    
-    return '';
-  };
 
   // Function to get EC status and color
   const getEcStatus = (ec) => {
@@ -117,14 +94,15 @@ export default function EcLevelScreen({ navigation, route }) {
 
   const ecStatus = getEcStatus(currentEcLevel);
 
-  // Handle EC target change with validation
-  const handleEcTargetChange = (value) => {
-    setEcTarget(value);
-    setEcWarning(getEcWarning(value));
-  };
+  const handleSetValue = async () => {
+    if (!userId || !ecTarget) return;
 
-  // Update EC target in database
-  const updateEcTarget = async (targetValue) => {
+    const targetValue = parseFloat(ecTarget);
+    if (isNaN(targetValue) || !isFinite(targetValue)) {
+      console.error("Invalid EC value:", ecTarget);
+      return;
+    }
+
     setIsSetting(true);
 
     try {
@@ -133,55 +111,9 @@ export default function EcLevelScreen({ navigation, route }) {
       console.log('Updated EC target:', targetValue);
     } catch (error) {
       console.error('Error updating target:', error);
-      Alert.alert("Error", "Failed to update EC target. Please try again.");
     }
 
     setIsSetting(false);
-  };
-
-  const handleSetValue = async () => {
-    if (!userId || !ecTarget) return;
-
-    const targetValue = parseFloat(ecTarget);
-    if (isNaN(targetValue) || !isFinite(targetValue)) {
-      Alert.alert("Invalid EC", "Please enter a valid EC value");
-      return;
-    }
-
-    // Check if EC is outside optimal range
-    if (targetValue < 1.8 || targetValue > 3.0) {
-      let warningMessage = `The EC level ${targetValue} mS/cm is outside the optimal range (1.8-3.0 mS/cm) for hydroponics.`;
-      
-      if (targetValue < 1.2) {
-        warningMessage += " This extremely low level may cause severe nutrient deficiencies and poor plant growth.";
-      } else if (targetValue > 4.0) {
-        warningMessage += " This extremely high level may cause nutrient burn, salt buildup, and plant stress.";
-      } else {
-        warningMessage += " This may affect nutrient uptake efficiency and plant health.";
-      }
-      
-      warningMessage += " Do you want to continue?";
-
-      Alert.alert(
-        "EC Warning",
-        warningMessage,
-        [
-          {
-            text: "Cancel",
-            style: "cancel"
-          },
-          {
-            text: "Set Anyway",
-            style: "destructive",
-            onPress: () => updateEcTarget(targetValue)
-          }
-        ]
-      );
-      return;
-    }
-
-    // If EC is in optimal range, set directly
-    updateEcTarget(targetValue);
   };
 
   const toggleTipsInfo = () => {
@@ -248,36 +180,19 @@ export default function EcLevelScreen({ navigation, route }) {
           Set your target EC level for optimal nutrient concentration in hydroponic systems
         </Text>
         <TextInput
-          style={[
-            styles.input,
-            ecWarning ? styles.inputWarning : null
-          ]}
+          style={styles.input}
           keyboardType="numeric"
           value={ecTarget}
-          onChangeText={handleEcTargetChange}
+          onChangeText={setEcTarget}
           placeholder="Enter desired EC level"
         />
-        
-        {/* Warning Display */}
-        {ecWarning ? (
-          <View style={styles.warningContainer}>
-            <Icon name="warning" size={16} color="#F44336" />
-            <Text style={styles.warningText}>{ecWarning}</Text>
-          </View>
-        ) : null}
-        
         <Button 
           mode="contained" 
           onPress={handleSetValue} 
           disabled={isSetting}
-          style={[
-            styles.setButton,
-            ecWarning ? styles.setButtonWarning : null
-          ]}
+          style={styles.setButton}
         >
-          {isSetting ? 'Setting...' : 
-           ecWarning ? `Set ${ecTarget} mS/cm (Not Recommended)` : 
-           `Set to ${ecTarget} mS/cm`}
+          {isSetting ? 'Setting...' : `Set to ${ecTarget} mS/cm`}
         </Button>
       </View>
 
@@ -505,7 +420,7 @@ export default function EcLevelScreen({ navigation, route }) {
         </View>
       </View>
 
-      {/* Common EC Problems and Solutions 
+      {/* Common EC Problems and Solutions */}
       <View style={styles.educationSection}>
         <View style={styles.sectionHeader}>
           <Icon name="help-outline" size={20} color={COLORS.green} />
@@ -546,7 +461,6 @@ export default function EcLevelScreen({ navigation, route }) {
           ))}
         </View>
       </View>
-      */}
     </ScrollView>
   );
 }
@@ -669,33 +583,8 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     backgroundColor: '#f9f9f9'
   },
-  inputWarning: {
-    borderColor: '#F44336',
-    borderWidth: 2,
-    backgroundColor: '#ffebee'
-  },
-  warningContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ffebee',
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 15,
-    borderLeftWidth: 4,
-    borderLeftColor: '#F44336'
-  },
-  warningText: {
-    fontSize: 14,
-    color: '#F44336',
-    marginLeft: 8,
-    flex: 1,
-    lineHeight: 18
-  },
   setButton: {
     backgroundColor: COLORS.green
-  },
-  setButtonWarning: {
-    backgroundColor: '#FF9800'
   },
   tipsContainer: {
     backgroundColor: '#fff3cd',

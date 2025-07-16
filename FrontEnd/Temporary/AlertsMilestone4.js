@@ -26,7 +26,7 @@ const ACTION_DEVICE_TYPE_MAP = {
 export default function AlertsScreen({ userId, groupId }) {
   const [alerts, setAlerts] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [showAlertsInfo, setShowAlertsInfo] = useState(false);
+  const [showAlertsInfo, setShowAlertsInfo] = useState(false); // New state for info visibility
   const alertsMap = useRef(new Map());
   const unsubscribeFunctions = useRef([]);
   const latestSensorDataRef = useRef(null);
@@ -99,7 +99,7 @@ export default function AlertsScreen({ userId, groupId }) {
       }
     };
 
-    // Function for warning-only alerts (no control commands)
+    // New function for warning-only alerts (no control commands)
     const checkWarningOnly = (param, current, condition, message) => {
       const key = `${groupId}-${param}-warning`;
       
@@ -122,58 +122,12 @@ export default function AlertsScreen({ userId, groupId }) {
       }
     };
 
-    // New function for water level control
-    const checkWaterLevel = (currentLevel) => {
-      const key = `${groupId}-water-level-alert`;
-      
-      if (currentLevel === 'Overflow') {
-        if (!alertsMap.current.has(key) || alertsMap.current.get(key).action !== 'decrease_water_level') {
-          alertsMap.current.set(key, {
-            id: key,
-            param: 'Water Level',
-            action: 'decrease_water_level',
-            message: `Water level overflow detected! Activating disposal pump (Current: ${currentLevel})`,
-            timestamp: new Date().toLocaleString(),
-            type: 'warning'
-          });
-          console.log("Triggering disposal pump for overflow:", { groupId, action: 'decrease_water_level' });
-          sendControlCommand(userId, groupId, 'decrease_water_level', 1, deviceIdMap);
-        }
-        newAlerts.push(alertsMap.current.get(key));
-      } else if (currentLevel === 'Low') {
-        if (!alertsMap.current.has(key) || alertsMap.current.get(key).action !== 'increase_water_level') {
-          alertsMap.current.set(key, {
-            id: key,
-            param: 'Water Level',
-            action: 'increase_water_level',
-            message: `Water level is low! Activating water pump (Current: ${currentLevel})`,
-            timestamp: new Date().toLocaleString(),
-            type: 'warning'
-          });
-          console.log("Triggering water pump for low level:", { groupId, action: 'increase_water_level' });
-          sendControlCommand(userId, groupId, 'increase_water_level', 1, deviceIdMap);
-        }
-        newAlerts.push(alertsMap.current.get(key));
-      } else {
-        // Normal water level - stop any active pumps
-        if (alertsMap.current.has(key)) {
-          const prev = alertsMap.current.get(key);
-          alertsMap.current.delete(key);
-          console.log("Stopping pump - water level normal:", { groupId, action: prev.action });
-          sendStopCommand(userId, groupId, prev.action, deviceIdMap);
-        }
-      }
-    };
-
-    // Keep existing pH and EC checks with control commands
+    // Keep existing pH and EC checks with control commands (unchanged)
     check("pH Level", sensor.ph, settings.pHTarget, "increase_pH", "decrease_pH", 1);
     check("EC Level", sensor.ec, settings.ecTarget, "increase_EC", "decrease_EC", 1);
     check("Soil Moisture", sensor.soil_moisture, settings.soilMoistureTarget, "increase_water_level", "decrease_water_level", 10);
 
-    // New water level control
-    checkWaterLevel(sensor.water_level);
-
-    // Temperature warning-only alert (18-25°C ideal range)
+    // NEW: Temperature warning-only alert (18-25°C ideal range)
     checkWarningOnly(
       "Temperature",
       sensor.temperature,
@@ -181,7 +135,7 @@ export default function AlertsScreen({ userId, groupId }) {
       `Temperature is out of ideal range! (Current: ${sensor.temperature}°C, Ideal: 18-25°C)`
     );
 
-    // Humidity warning-only alert (50-70% ideal range)
+    // NEW: Humidity warning-only alert (50-70% ideal range)
     checkWarningOnly(
       "Humidity",
       sensor.humidity,
@@ -189,7 +143,7 @@ export default function AlertsScreen({ userId, groupId }) {
       `Humidity is out of ideal range! (Current: ${sensor.humidity}%, Ideal: 50-70%)`
     );
 
-    // Light intensity warning-only alert (10000-50000 ideal range)
+    // NEW: Light intensity warning-only alert (10000-50000 ideal range)
     checkWarningOnly(
       "Light Intensity",
       sensor.light_intensity,
@@ -197,6 +151,15 @@ export default function AlertsScreen({ userId, groupId }) {
       `Light intensity is out of ideal range! (Current: ${sensor.light_intensity}, Ideal: 10000-50000)`
     );
 
+    // NEW: Water level categorical warning
+    checkWarningOnly(
+      "Water Level",
+      sensor.water_level,
+      ['Low', 'Medium', 'Critical', 'Empty', 'Overflow'].includes(sensor.water_level),
+      `Water level alert: ${sensor.water_level}`
+    );
+
+    // Remove the old temperature and humidity control commands
     setAlerts((prev) => [
       ...prev.filter(a => !a.id.endsWith("-alert") && !a.id.endsWith("-warning")), 
       ...newAlerts
@@ -270,10 +233,12 @@ export default function AlertsScreen({ userId, groupId }) {
     await AsyncStorage.setItem(`alerts-${groupId}`, JSON.stringify(updatedAlerts));
   };
 
+  // Function to toggle alerts info visibility
   const toggleAlertsInfo = () => {
     setShowAlertsInfo(!showAlertsInfo);
   };
 
+  // Function to get alert icon based on type
   const getAlertIcon = (type) => {
     switch (type) {
       case 'warning':
@@ -287,6 +252,7 @@ export default function AlertsScreen({ userId, groupId }) {
     }
   };
 
+  // Function to get alert color based on type
   const getAlertColor = (type) => {
     switch (type) {
       case 'warning':
@@ -302,6 +268,7 @@ export default function AlertsScreen({ userId, groupId }) {
 
   return (
     <View style={styles.container}>
+      {/* Header with Info Button */}
       <View style={styles.header}>
         <View style={styles.titleContainer}>
           <View style={styles.titleSection}>
@@ -324,6 +291,7 @@ export default function AlertsScreen({ userId, groupId }) {
         </View>
       </View>
 
+      {/* Conditional Alerts Information */}
       {showAlertsInfo && (
         <View style={styles.infoContainer}>
           <View style={styles.infoHeader}>
@@ -341,12 +309,12 @@ export default function AlertsScreen({ userId, groupId }) {
             • <Text style={styles.boldText}>Warning Alerts:</Text> Sensor values are outside target ranges{'\n'}
             • <Text style={styles.boldText}>Active Commands:</Text> System is actively correcting conditions{'\n'}
             • <Text style={styles.boldText}>Stop Commands:</Text> Automated corrections have been halted{'\n'}
-            • <Text style={styles.boldText}>Water Level Control:</Text> Auto-activates pumps for overflow/low water{'\n'}
             • <Text style={styles.boldText}>Action Required:</Text> Review and address alerts promptly to maintain optimal growing conditions
           </Text>
         </View>
       )}
 
+      {/* Alert Statistics */}
       <View style={styles.statsContainer}>
         <View style={styles.statItem}>
           <Icon name="notifications-active" size={24} color={COLORS.green} />
@@ -369,6 +337,7 @@ export default function AlertsScreen({ userId, groupId }) {
         </View>
       </View>
 
+      {/* Alerts List */}
       {alerts.length === 0 ? (
         <View style={styles.emptyStateContainer}>
           <Icon name="notifications-off" size={64} color="#ccc" />
