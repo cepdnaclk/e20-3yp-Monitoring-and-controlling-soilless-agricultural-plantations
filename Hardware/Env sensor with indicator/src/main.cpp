@@ -573,12 +573,12 @@ bool initializeSensors()
   Wire.begin(21, 22);
   if (!LightMeter.begin(BH1750::CONTINUOUS_HIGH_RES_MODE))
   {
-    Serial.println("⚠️ Failed to initialize BH1750! Check wiring or sensor.");
+    Serial.println("Failed to initialize BH1750! Check wiring or sensor.");
     return false;
   }
   else
   {
-    Serial.println("✅ BH1750 initialized successfully.");
+    Serial.println("BH1750 initialized successfully.");
   }
 
   // Wait a bit for sensors to stabilize
@@ -616,7 +616,7 @@ void setup()
   // Initialize sensors
   if (!initializeSensors())
   {
-    Serial.println("❌ Sensor initialization failed!");
+    Serial.println("Sensor initialization failed!");
     currentColor = RED;
     currentPattern = TRIPLE;
     // Continue anyway, but with error indication
@@ -625,7 +625,7 @@ void setup()
   // Fetch user credentials
   if (!fetchUserId())
   {
-    Serial.println("❌ Cannot continue without userId - entering error state");
+    Serial.println("Cannot continue without userId - entering error state");
     currentColor = SOLID_RED;
     currentPattern = FAST;
     // Don't halt completely, but indicate error
@@ -635,7 +635,7 @@ void setup()
   // Connect to MQTT
   if (!connectToMQTT())
   {
-    Serial.println("❌ Initial MQTT connection failed - will retry in main loop");
+    Serial.println("Initial MQTT connection failed - will retry in main loop");
     currentColor = RED;
     currentPattern = DOUBLE;
   }
@@ -645,7 +645,7 @@ void setup()
     currentPattern = SLOW;
   }
 
-  Serial.println("✅ Setup complete - entering main loop");
+  Serial.println("Setup complete - entering main loop");
 }
 
 void loop()
