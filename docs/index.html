@@ -27,6 +27,137 @@
   <!-- Main CSS File -->
   <link href="assets/css/main.css" rel="stylesheet">
 
+  <!-- Custom Styles for Hardware Modules and Green Theme -->
+  <style>
+    .hardware-module-card {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+      padding: 30px;
+      height: 100%;
+      transition: all 0.3s ease;
+      border-left: 4px solid #28a745;
+    }
+
+    .hardware-module-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    }
+
+    .hardware-module-card .module-icon {
+      width: 80px;
+      height: 80px;
+      background: linear-gradient(45deg, #28a745, #20c997);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+    }
+
+    .hardware-module-card .module-icon i {
+      font-size: 2.5rem;
+      color: white;
+    }
+
+    .hardware-module-card h4 {
+      color: #2c4964;
+      margin-bottom: 15px;
+      font-weight: 600;
+    }
+
+    .hardware-module-card .module-specs {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 15px;
+      margin-top: 20px;
+    }
+
+    .hardware-module-card .module-specs h6 {
+      color: #28a745;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+
+    .hardware-module-card .module-specs ul {
+      margin-bottom: 0;
+      padding-left: 20px;
+    }
+
+    .hardware-module-card .module-specs li {
+      margin-bottom: 5px;
+      font-size: 0.9rem;
+    }
+
+    .module-image-container {
+      width: 100%;
+      height: 200px;
+      overflow: hidden;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      position: relative;
+    }
+
+    .module-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 10px;
+      transition: transform 0.3s ease;
+    }
+
+    .hardware-module-card:hover .module-image {
+      transform: scale(1.05);
+    }
+
+    .module-image-container::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(45deg, rgba(40, 167, 69, 0.1), rgba(32, 201, 151, 0.1));
+      border-radius: 10px;
+      transition: opacity 0.3s ease;
+      opacity: 0;
+    }
+
+    .hardware-module-card:hover .module-image-container::after {
+      opacity: 1;
+    }
+
+    .demo-video-container {
+      position: relative;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .demo-video-container video {
+      border-radius: 15px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Green Theme Overrides */
+    .text-primary {
+      color: #28a745 !important;
+    }
+
+    .btn-primary {
+      background-color: #28a745 !important;
+      border-color: #28a745 !important;
+    }
+
+    .btn-primary:hover {
+      background-color: #218838 !important;
+      border-color: #1e7e34 !important;
+    }
+
+    .display-4.text-primary {
+      color: #28a745 !important;
+    }
+  </style>
+
   <!-- =======================================================
   * Template Name: QuickStart
   * Template URL: https://bootstrapmade.com/quickstart-bootstrap-startup-website-template/
@@ -47,21 +178,20 @@
       </a>
 
       <nav id="navmenu" class="navmenu">
-  <ul>
-    <li><a href="index.html#hero" class="active">Home</a></li>
-    <li><a href="index.html#about">About</a></li>
-    <li><a href="index.html#features">Features</a></li>
-    <li><a href="index.html#architecture">Architecture</a></li>
-    <li><a href="index.html#more-features">Our Impact</a></li>
-    <li><a href="index.html#testimonials">Our Team</a></li>
-    <li><a href="index.html#budget">Budget</a></li>
-    <li><a href="index.html#contact">Contact Us</a></li>
-  </ul>
-  <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
-</nav>
-
-
-      
+        <ul>
+          <li><a href="index.html#hero" class="active">Home</a></li>
+          <li><a href="index.html#about">About</a></li>
+          <li><a href="index.html#features">Features</a></li>
+          <li><a href="index.html#hardware">Hardware</a></li>
+          <li><a href="index.html#demo">Demo</a></li>
+          <li><a href="index.html#architecture">Architecture</a></li>
+          <li><a href="index.html#more-features">Our Impact</a></li>
+          <li><a href="index.html#testimonials">Our Team</a></li>
+          <li><a href="index.html#budget">Budget</a></li>
+          <li><a href="index.html#contact">Contact Us</a></li>
+        </ul>
+        <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
+      </nav>
 
     </div>
   </header>
@@ -85,19 +215,12 @@
           </div>
         </div>
       </div>
-      
-
     </section><!-- /Hero Section -->
-
-    
 
     <!-- About Section -->
     <section id="about" class="about section">
-
       <div class="container">
-
         <div class="row gy-4">
-
           <div class="col-lg-6 content" data-aos="fade-up" data-aos-delay="100">
             <p class="who-we-are">Who We Are</p>
             <h3>Revolutionizing Agriculture</h3>
@@ -128,19 +251,13 @@
                 </div>
               </div>
             </div>
-
           </div>
-
         </div>
-
       </div>
     </section><!-- /About Section -->
 
-    
-
     <!-- Features Section -->
     <section id="features" class="features section">
-
       <!-- Section Title -->
       <div class="container section-title" data-aos="fade-up">
         <h2>Features</h2>
@@ -149,9 +266,7 @@
 
       <div class="container">
         <div class="row justify-content-between">
-
           <div class="col-lg-5 d-flex align-items-center">
-
             <ul class="nav nav-tabs" data-aos="fade-up" data-aos-delay="100">
               <li class="nav-item">
                 <a class="nav-link active show" data-bs-toggle="tab" data-bs-target="#features-tab-1">
@@ -170,7 +285,7 @@
                   <div>
                     <h4 class="d-none d-lg-block">Remote Functionality</h4>
                     <p>
-                      	Allowing remote monitoring and controlling via IOT based sensors and controllers
+                        Allowing remote monitoring and controlling via IOT based sensors and controllers
                     </p>
                   </div>
                 </a>
@@ -187,13 +302,10 @@
                 </a>
               </li>
             </ul><!-- End Tab Nav -->
-
           </div>
 
           <div class="col-lg-6">
-
             <div class="tab-content" data-aos="fade-up" data-aos-delay="200">
-
               <div class="tab-pane fade active show" id="features-tab-1">
                 <img src="assets/img/tabs-1.jpg" alt="" class="img-fluid">
               </div><!-- End Tab Content Item -->
@@ -206,178 +318,358 @@
                 <img src="assets/img/tabs-3.jpg" alt="" class="img-fluid">
               </div><!-- End Tab Content Item -->
             </div>
-
           </div>
-
         </div>
-
       </div>
-
     </section><!-- /Features Section -->
 
-   <!-- Architecture Section -->
-<section id="architecture" class="architecture section light-background">
-  
-  <!-- Section Title -->
-  <div class="container section-title" data-aos="fade-up">
-    <h2>System Architecture</h2>
-    <p>High-Level Overview of PlantPulse System</p>
-  </div><!-- End Section Title -->
+    <!-- Hardware Modules Section -->
+    <section id="hardware" class="hardware section light-background">
+      <!-- Section Title -->
+      <div class="container section-title" data-aos="fade-up">
+        <h2>Hardware Modules</h2>
+        <p>Modular Design for Maximum Flexibility and Scalability</p>
+      </div><!-- End Section Title -->
 
-  
-
-  <div class="container">
-    <div class="row gy-4">
-      
-      <!-- Architecture Diagram -->
-<div class="col-lg-8" data-aos="fade-up" data-aos-delay="100">
-  <div class="architecture-diagram text-center" style="margin-top: 90px;">
-    <img src="assets/img/architecture-diagram.png" class="img-fluid rounded shadow" alt="PlantPulse System Architecture">
-  </div>
-</div>
-
-
-      <!-- Architecture Description -->
-      <div class="col-lg-4" data-aos="fade-up" data-aos-delay="200">
-        <div class="architecture-content">
-          <h3>System Components</h3>
+      <div class="container">
+        <div class="row gy-4">
           
-          <div class="architecture-item">
-            <div class="architecture-icon">
-              <i class="bi bi-phone"></i>
-            </div>
-            <div class="architecture-text">
-              <h4>User Interface</h4>
-              <p>Mobile application for monitoring and controlling the entire PlantPulse system remotely</p>
+          <!-- Environmental Sensor Module -->
+          <div class="col-lg-4" data-aos="fade-up" data-aos-delay="100">
+            <div class="hardware-module-card">
+              <div class="module-image-container">
+                <img src="assets/img/modules/environmental-sensor-module.jpg" alt="Environmental Sensor Module" class="module-image">
+              </div>
+              <div class="module-icon">
+                <i class="bi bi-thermometer-half"></i>
+              </div>
+              <h4 class="text-center">Environmental Sensor Module</h4>
+              <p class="text-center text-muted">Monitors critical environmental conditions for optimal plant growth</p>
+              
+              <div class="module-specs">
+                <h6>Key Measurements:</h6>
+                <ul>
+                  <li><strong>Temperature:</strong> Ambient air temperature monitoring</li>
+                  <li><strong>Humidity:</strong> Relative humidity levels</li>
+                  <li><strong>Light Intensity:</strong> Photosynthetically active radiation</li>
+                </ul>
+              </div>
+
+              <div class="module-specs mt-3">
+                <h6>Components:</h6>
+                <ul>
+                  <li>DHT22 Temperature & Humidity Sensor</li>
+                  <li>GY-30 Light Intensity Sensor</li>
+                  <li>ESP32 Microcontroller</li>
+                  <li>Battery Management System (BMS)</li>
+                  <li>Weatherproof Enclosure</li>
+                </ul>
+              </div>
             </div>
           </div>
 
-          <div class="architecture-item">
-            <div class="architecture-icon">
-              <i class="bi bi-cloud-arrow-up"></i>
-            </div>
-            <div class="architecture-text">
-              <h4>Cloud Platform</h4>
-              <p>Database and API server for data storage, processing, and real-time communication</p>
+          <!-- Water Sensor Module -->
+          <div class="col-lg-4" data-aos="fade-up" data-aos-delay="200">
+            <div class="hardware-module-card">
+              <div class="module-image-container">
+                <img src="assets/img/modules/water-sensor-module.jpg" alt="Water Sensor Module" class="module-image">
+              </div>
+              <div class="module-icon">
+                <i class="bi bi-droplet"></i>
+              </div>
+              <h4 class="text-center">Water Sensor Module</h4>
+              <p class="text-center text-muted">Comprehensive water quality and level monitoring system</p>
+              
+              <div class="module-specs">
+                <h6>Key Measurements:</h6>
+                <ul>
+                  <li><strong>Water Temperature:</strong> Nutrient solution temperature</li>
+                  <li><strong>pH Level:</strong> Acidity/alkalinity monitoring</li>
+                  <li><strong>Water Level:</strong> Reservoir level detection</li>
+                  <li><strong>EC (Conductivity):</strong> Nutrient concentration</li>
+                </ul>
+              </div>
+
+              <div class="module-specs mt-3">
+                <h6>Components:</h6>
+                <ul>
+                  <li>pH4502C pH Sensor</li>
+                  <li>MD0591 Turbidity Sensor</li>
+                  <li>PSR-22-B2 Water Level Sensor</li>
+                  <li>ESP32 Microcontroller</li>
+                  <li>Battery Management System (BMS)</li>
+                </ul>
+              </div>
             </div>
           </div>
 
-          <div class="architecture-item">
-            <div class="architecture-icon">
-              <i class="bi bi-wifi"></i>
-            </div>
-            <div class="architecture-text">
-              <h4>IoT Communication</h4>
-              <p>Wireless communication module enabling real-time data transmission and control signals</p>
+          <!-- Controller Module -->
+          <div class="col-lg-4" data-aos="fade-up" data-aos-delay="300">
+            <div class="hardware-module-card">
+              <div class="module-image-container">
+                <img src="assets/img/modules/controller-module.jpg" alt="Controller Module" class="module-image">
+              </div>
+              <div class="module-icon">
+                <i class="bi bi-gear-fill"></i>
+              </div>
+              <h4 class="text-center">Controller Module</h4>
+              <p class="text-center text-muted">Automated control system for nutrient delivery and water management</p>
+              
+              <div class="module-specs">
+                <h6>Key Functions:</h6>
+                <ul>
+                  <li><strong>Fertilizer Dispensing:</strong> Precise nutrient delivery</li>
+                  <li><strong>pH Control:</strong> Automatic pH adjustment</li>
+                  <li><strong>Water Management:</strong> Excess water disposal</li>
+                  <li><strong>Auto Refill:</strong> Low water level response</li>
+                </ul>
+              </div>
+
+              <div class="module-specs mt-3">
+                <h6>Components:</h6>
+                <ul>
+                  <li>Fertilizer Dispensing System</li>
+                  <li>Water Pumps (3 units)</li>
+                  <li>Control Valves & Actuators</li>
+                  <li>ESP32 Control Unit</li>
+                  <li>Battery Management System (BMS)</li>
+                </ul>
+              </div>
             </div>
           </div>
 
-          <div class="architecture-item">
-            <div class="architecture-icon">
-              <i class="bi bi-thermometer-half"></i>
-            </div>
-            <div class="architecture-text">
-              <h4>Sensor Modules</h4>
-              <p>Environmental sensors (light, temperature, humidity) and medium sensors (pH, turbidity, water level)</p>
-            </div>
-          </div>
+        </div>
 
-          <div class="architecture-item">
-            <div class="architecture-icon">
-              <i class="bi bi-gear-fill"></i>
-            </div>
-            <div class="architecture-text">
-              <h4>Control System</h4>
-              <p>Controller module and fertilizer dispenser with automated nutrient delivery capabilities</p>
-            </div>
-          </div>
-
-          <div class="architecture-item">
-            <div class="architecture-icon">
-              <i class="bi bi-battery-charging"></i>
-            </div>
-            <div class="architecture-text">
-              <h4>Power System</h4>
-              <p>Integrated power supply system ensuring continuous operation of all hardware components</p>
+        <!-- Modular Benefits Section -->
+        <div class="row mt-5" data-aos="fade-up" data-aos-delay="400">
+          <div class="col-12">
+            <div class="card shadow-sm">
+              <div class="card-body">
+                <h3 class="text-center mb-4">Modular System Benefits</h3>
+                <div class="row">
+                  <div class="col-lg-3 col-md-6 text-center mb-3">
+                    <i class="bi bi-puzzle display-4 text-primary mb-2"></i>
+                    <h5>Scalability</h5>
+                    <p>Add or remove modules based on your specific needs and farm size</p>
+                  </div>
+                  <div class="col-lg-3 col-md-6 text-center mb-3">
+                    <i class="bi bi-tools display-4 text-primary mb-2"></i>
+                    <h5>Easy Maintenance</h5>
+                    <p>Individual modules can be serviced independently without system downtime</p>
+                  </div>
+                  <div class="col-lg-3 col-md-6 text-center mb-3">
+                    <i class="bi bi-currency-dollar display-4 text-primary mb-2"></i>
+                    <h5>Cost Effective</h5>
+                    <p>Upgrade specific modules as needed without replacing the entire system</p>
+                  </div>
+                  <div class="col-lg-3 col-md-6 text-center mb-3">
+                    <i class="bi bi-arrow-repeat display-4 text-primary mb-2"></i>
+                    <h5>Flexible Deployment</h5>
+                    <p>Modules can be configured for different crops, seasons, and user preferences</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
+    </section><!-- /Hardware Modules Section -->
 
-    </div>
+    <!-- Demo Video Section -->
+    <section id="demo" class="demo section light-background">
+      <div class="container" data-aos="fade-up">
+        <!-- Section Title -->
+        <div class="section-title text-center">
+          <h2>System Demonstration</h2>
+          <p>Watch PlantPulse in action - See how our automated hydroponic system revolutionizes modern agriculture</p>
+        </div>
 
-    <!-- Data Flow Section -->
-    <div class="row mt-5">
-      <div class="col-12" data-aos="fade-up" data-aos-delay="300">
-        <div class="data-flow-section">
-          <h3 class="text-center mb-4">System Data Flow</h3>
-          <div class="row">
-            <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
-              <div class="flow-step text-center">
-                <div class="step-number">1</div>
-                <h5>Sensor Data Collection</h5>
-                <p>Environmental and medium sensors gather real-time data</p>
-              </div>
+        <div class="demo-video-container" data-aos="fade-up" data-aos-delay="200">
+          <video width="100%" height="auto" controls>
+              <source src="assets/videos/demo_vid.mp4" type="video/mp4">
+              Your browser does not support the video tag.
+            </video>
+        </div>
+
+        <div class="row mt-4" data-aos="fade-up" data-aos-delay="300">
+          <div class="col-lg-4 col-md-6 mb-3">
+            <div class="text-center">
+              <i class="bi bi-play-circle display-4 text-primary mb-2"></i>
+              <h5>Live Monitoring</h5>
+              <p>Real-time sensor data visualization</p>
             </div>
-            <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
-              <div class="flow-step text-center">
-                <div class="step-number">2</div>
-                <h5>Data Transmission</h5>
-                <p>IoT module sends data to cloud platform</p>
-              </div>
+          </div>
+          <div class="col-lg-4 col-md-6 mb-3">
+            <div class="text-center">
+              <i class="bi bi-phone display-4 text-primary mb-2"></i>
+              <h5>Mobile Control</h5>
+              <p>Complete system control from mobile app</p>
             </div>
-            <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
-              <div class="flow-step text-center">
-                <div class="step-number">3</div>
-                <h5>Cloud Processing</h5>
-                <p>Database stores data, API processes requests</p>
-              </div>
-            </div>
-            <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
-              <div class="flow-step text-center">
-                <div class="step-number">4</div>
-                <h5>Mobile Interface</h5>
-                <p>User monitors system status and sends commands</p>
-              </div>
-            </div>
-            <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
-              <div class="flow-step text-center">
-                <div class="step-number">5</div>
-                <h5>Control Signals</h5>
-                <p>Commands sent to controller and fertilizer dispenser</p>
-              </div>
-            </div>
-            <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
-              <div class="flow-step text-center">
-                <div class="step-number">6</div>
-                <h5>Automated Response</h5>
-                <p>System adjusts nutrients and environmental conditions</p>
-              </div>
+          </div>
+          <div class="col-lg-4 col-md-12 mb-3">
+            <div class="text-center">
+              <i class="bi bi-robot display-4 text-primary mb-2"></i>
+              <h5>Automation</h5>
+              <p>Fully automated nutrient delivery system</p>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </section><!-- /Demo Video Section -->
 
-  </div>
-</section><!-- /Architecture Section -->
+    <!-- Architecture Section -->
+    <section id="architecture" class="architecture section">
+      
+      <!-- Section Title -->
+      <div class="container section-title" data-aos="fade-up">
+        <h2>System Architecture</h2>
+        <p>High-Level Overview of PlantPulse System</p>
+      </div><!-- End Section Title -->
 
+      <div class="container">
+        <div class="row gy-4">
+          
+          <!-- Architecture Diagram -->
+          <div class="col-lg-8" data-aos="fade-up" data-aos-delay="100">
+            <div class="architecture-diagram text-center" style="margin-top: 90px;">
+              <img src="assets/img/architecture-diagram.png" class="img-fluid rounded shadow" alt="PlantPulse System Architecture">
+            </div>
+          </div>
 
+          <!-- Architecture Description -->
+          <div class="col-lg-4" data-aos="fade-up" data-aos-delay="200">
+            <div class="architecture-content">
+              <h3>System Components</h3>
+              
+              <div class="architecture-item">
+                <div class="architecture-icon">
+                  <i class="bi bi-phone"></i>
+                </div>
+                <div class="architecture-text">
+                  <h4>User Interface</h4>
+                  <p>Mobile application for monitoring and controlling the entire PlantPulse system remotely</p>
+                </div>
+              </div>
 
+              <div class="architecture-item">
+                <div class="architecture-icon">
+                  <i class="bi bi-cloud-arrow-up"></i>
+                </div>
+                <div class="architecture-text">
+                  <h4>Cloud Platform</h4>
+                  <p>Database and API server for data storage, processing, and real-time communication</p>
+                </div>
+              </div>
+
+              <div class="architecture-item">
+                <div class="architecture-icon">
+                  <i class="bi bi-wifi"></i>
+                </div>
+                <div class="architecture-text">
+                  <h4>IoT Communication</h4>
+                  <p>Wireless communication module enabling real-time data transmission and control signals</p>
+                </div>
+              </div>
+
+              <div class="architecture-item">
+                <div class="architecture-icon">
+                  <i class="bi bi-thermometer-half"></i>
+                </div>
+                <div class="architecture-text">
+                  <h4>Sensor Modules</h4>
+                  <p>Environmental sensors (light, temperature, humidity) and medium sensors (pH, turbidity, water level)</p>
+                </div>
+              </div>
+
+              <div class="architecture-item">
+                <div class="architecture-icon">
+                  <i class="bi bi-gear-fill"></i>
+                </div>
+                <div class="architecture-text">
+                  <h4>Control System</h4>
+                  <p>Controller module and fertilizer dispenser with automated nutrient delivery capabilities</p>
+                </div>
+              </div>
+
+              <div class="architecture-item">
+                <div class="architecture-icon">
+                  <i class="bi bi-battery-charging"></i>
+                </div>
+                <div class="architecture-text">
+                  <h4>Power System</h4>
+                  <p>Integrated power supply system with BMS ensuring continuous operation of all hardware components</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Data Flow Section -->
+        <div class="row mt-5">
+          <div class="col-12" data-aos="fade-up" data-aos-delay="300">
+            <div class="data-flow-section">
+              <h3 class="text-center mb-4">System Data Flow</h3>
+              <div class="row">
+                <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+                  <div class="flow-step text-center">
+                    <div class="step-number">1</div>
+                    <h5>Sensor Data Collection</h5>
+                    <p>Environmental and medium sensors gather real-time data</p>
+                  </div>
+                </div>
+                <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+                  <div class="flow-step text-center">
+                    <div class="step-number">2</div>
+                    <h5>Data Transmission</h5>
+                    <p>IoT module sends data to cloud platform</p>
+                  </div>
+                </div>
+                <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+                  <div class="flow-step text-center">
+                    <div class="step-number">3</div>
+                    <h5>Cloud Processing</h5>
+                    <p>Database stores data, API processes requests</p>
+                  </div>
+                </div>
+                <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+                  <div class="flow-step text-center">
+                    <div class="step-number">4</div>
+                    <h5>Mobile Interface</h5>
+                    <p>User monitors system status and sends commands</p>
+                  </div>
+                </div>
+                <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+                  <div class="flow-step text-center">
+                    <div class="step-number">5</div>
+                    <h5>Control Signals</h5>
+                    <p>Commands sent to controller and fertilizer dispenser</p>
+                  </div>
+                </div>
+                <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+                  <div class="flow-step text-center">
+                    <div class="step-number">6</div>
+                    <h5>Automated Response</h5>
+                    <p>System adjusts nutrients and environmental conditions</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section><!-- /Architecture Section -->
 
     <!-- More Features Section -->
     <section id="more-features" class="more-features section">
-
       <div class="container">
-
         <div class="row justify-content-around gy-4">
-
           <div class="col-lg-6 d-flex flex-column justify-content-center order-2 order-lg-1" data-aos="fade-up" data-aos-delay="100">
             <h3>Our Impact</h3>
             <p>We work hard every day to make life of our clients easier</p>
 
             <div class="row">
-
               <div class="col-lg-6 icon-box d-flex">
                 <i class="bi bi-easel flex-shrink-0"></i>
                 <div>
@@ -417,248 +709,224 @@
                   <p>Adjustable settings tailored for different crops, seasons, and user preferences</p>
                 </div>
               </div><!-- End Icon Box -->
-
             </div>
-
           </div>
 
           <div class="features-image col-lg-5 order-1 order-lg-2" data-aos="fade-up" data-aos-delay="200">
             <img src="assets/img/features-3.jpg" alt="">
           </div>
-
         </div>
-
       </div>
-
     </section><!-- /More Features Section -->
 
-    
+    <!-- Testimonials Section -->
+    <section id="testimonials" class="testimonials section light-background">
+      <!-- Section Title -->
+      <div class="container section-title" data-aos="fade-up">
+        <h2>Our Team</h2>
+      </div><!-- End Section Title -->
 
-    
-
- <!-- Testimonials Section -->
-<section id="testimonials" class="testimonials section light-background">
-
-  <!-- Section Title -->
-  <div class="container section-title" data-aos="fade-up">
-    <h2>Our Team</h2>
-  </div><!-- End Section Title -->
-
-  <!-- Supervisor Section -->
-  <div class="container text-center mb-5" data-aos="fade-up">
-    <h3>Our Supervisors</h3>
-    <div class="row justify-content-center mt-4">
-      <!-- First Supervisor -->
-      <div class="col-lg-4 col-md-6 mb-4">
-        <a href="https://people.ce.pdn.ac.lk/staff/academic/isuru-nawinne/" target="_blank" class="d-flex flex-column align-items-center text-decoration-none">
-          <img src="assets/img/testimonials/supervisor.png" class="rounded-circle shadow" alt="Dr. Isuru Nawinne" style="width: 160px; height: 160px; object-fit: cover;">
-          <h4 class="mt-3 mb-0">Dr. Isuru Nawinne</h4>
-          <p class="text-muted">Senior Lecturer, Dept. of Computer Engineering</p>
-          <p class="text-primary mb-1"><i class="bi bi-envelope"></i> isurunawinne@eng.pdn.ac.lk</p>
-          <p class="text-secondary"><i class="bi bi-telephone"></i> +94 81 239 3470</p>
-        </a>
+      <!-- Supervisor Section -->
+      <div class="container text-center mb-5" data-aos="fade-up">
+        <h3>Our Supervisors</h3>
+        <div class="row justify-content-center mt-4">
+          <!-- First Supervisor -->
+          <div class="col-lg-4 col-md-6 mb-4">
+            <a href="https://people.ce.pdn.ac.lk/staff/academic/isuru-nawinne/" target="_blank" class="d-flex flex-column align-items-center text-decoration-none">
+              <img src="assets/img/testimonials/supervisor.png" class="rounded-circle shadow" alt="Dr. Isuru Nawinne" style="width: 160px; height: 160px; object-fit: cover;">
+              <h4 class="mt-3 mb-0">Dr. Isuru Nawinne</h4>
+              <p class="text-muted">Senior Lecturer, Dept. of Computer Engineering</p>
+              <p class="text-primary mb-1"><i class="bi bi-envelope"></i> isurunawinne@eng.pdn.ac.lk</p>
+              <p class="text-secondary"><i class="bi bi-telephone"></i> +94 81 239 3470</p>
+            </a>
+          </div>
+          
+          <!-- Second Supervisor -->
+          <div class="col-lg-4 col-md-6 mb-4">
+            <a href="https://people.ce.pdn.ac.lk/staff/academic/biswajith-dissanayake/" target="_blank" class="d-flex flex-column align-items-center text-decoration-none">
+              <img src="assets/img/testimonials/supervisor2.png" class="rounded-circle shadow" alt="Mr. Biswajith Dissanayake" style="width: 160px; height: 160px; object-fit: cover;">
+              <h4 class="mt-3 mb-0">Mr. Biswajith Dissanayake</h4>
+              <p class="text-muted">Lecturer (Prob), Dept. of Computer Engineering</p>
+              <p class="text-primary mb-1"><i class="bi bi-envelope"></i> biswajithd@eng.pdn.ac.lk</p>
+              <p class="text-secondary"><i class="bi bi-telephone"></i> +94 81 239 3471</p>
+            </a>
+          </div>
+        </div>
       </div>
-      
-      <!-- Second Supervisor -->
-      <div class="col-lg-4 col-md-6 mb-4">
-        <a href="https://people.ce.pdn.ac.lk/staff/academic/biswajith-dissanayake/" target="_blank" class="d-flex flex-column align-items-center text-decoration-none">
-          <img src="assets/img/testimonials/supervisor2.png" class="rounded-circle shadow" alt="Mr. Biswajith Dissanayake" style="width: 160px; height: 160px; object-fit: cover;">
-          <h4 class="mt-3 mb-0">Mr. Biswajith Dissanayake</h4>
-          <p class="text-muted">Lecturer (Prob), Dept. of Computer Engineering</p>
-          <p class="text-primary mb-1"><i class="bi bi-envelope"></i> biswajithd@eng.pdn.ac.lk</p>
-          <p class="text-secondary"><i class="bi bi-telephone"></i> +94 81 239 3471</p>
-        </a>
-      </div>
-    </div>
-  </div>
 
-  <!-- Team Members Section -->
-  <div class="container" data-aos="fade-up" data-aos-delay="100">
-    <h3 class="text-center mb-4">Team Members</h3>
-    
-    <div class="swiper init-swiper">
-      <script type="application/json" class="swiper-config">
-        {
-          "loop": true,
-          "speed": 600,
-          "autoplay": {
-            "delay": 5000
-          },
-          "slidesPerView": "auto",
-          "pagination": {
-            "el": ".swiper-pagination",
-            "type": "bullets",
-            "clickable": true
-          },
-          "breakpoints": {
-            "320": {
-              "slidesPerView": 1,
-              "spaceBetween": 40
-            },
-            "1200": {
-              "slidesPerView": 3,
-              "spaceBetween": 1
+      <!-- Team Members Section -->
+      <div class="container" data-aos="fade-up" data-aos-delay="100">
+        <h3 class="text-center mb-4">Team Members</h3>
+        
+        <div class="swiper init-swiper">
+          <script type="application/json" class="swiper-config">
+            {
+              "loop": true,
+              "speed": 600,
+              "autoplay": {
+                "delay": 5000
+              },
+              "slidesPerView": "auto",
+              "pagination": {
+                "el": ".swiper-pagination",
+                "type": "bullets",
+                "clickable": true
+              },
+              "breakpoints": {
+                "320": {
+                  "slidesPerView": 1,
+                  "spaceBetween": 40
+                },
+                "1200": {
+                  "slidesPerView": 3,
+                  "spaceBetween": 1
+                }
+              }
             }
-          }
-        }
-      </script>
-      
-      <div class="swiper-wrapper">
-        <!-- Tharusha Haththella -->
-        <div class="swiper-slide">
-          <a href="https://people.ce.pdn.ac.lk/students/e20/133/" target="_blank" class="testimonial-item text-decoration-none">
-            <div class="profile mt-auto text-center">
-              <img src="assets/img/testimonials/testimonials-1.jpg" class="testimonial-img" alt="Tharusha Haththella">
-              <h3>Tharusha Haththella</h3>
-              <p class="text-primary mb-1"><i class="bi bi-envelope"></i> e20133@eng.pdn.ac.lk</p>
-              <p class="text-secondary"><i class="bi bi-telephone"></i> +94 78 493 8615</p>
+          </script>
+          
+          <div class="swiper-wrapper">
+            <!-- Tharusha Haththella -->
+            <div class="swiper-slide">
+              <a href="https://people.ce.pdn.ac.lk/students/e20/133/" target="_blank" class="testimonial-item text-decoration-none">
+                <div class="profile mt-auto text-center">
+                  <img src="assets/img/testimonials/testimonials-1.jpg" class="testimonial-img" alt="Tharusha Haththella">
+                  <h3>Tharusha Haththella</h3>
+                  <p class="text-primary mb-1"><i class="bi bi-envelope"></i> e20133@eng.pdn.ac.lk</p>
+                  <p class="text-secondary"><i class="bi bi-telephone"></i> +94 78 493 8615</p>
+                </div>
+              </a>
             </div>
-          </a>
-        </div>
-        <!-- End testimonial item -->
+            <!-- End testimonial item -->
 
-        <!-- Sachindu Premasiri -->
-        <div class="swiper-slide">
-          <a href="https://people.ce.pdn.ac.lk/students/e20/305/" target="_blank" class="testimonial-item text-decoration-none">
-            <div class="profile mt-auto text-center">
-              <img src="assets/img/testimonials/testimonials-2.jpg" class="testimonial-img" alt="Sachindu Premasiri">
-              <h3>Sachindu Premasiri</h3>
-              <p class="text-primary mb-1"><i class="bi bi-envelope"></i> e20305@eng.pdn.ac.lk</p>
-              <p class="text-secondary"><i class="bi bi-telephone"></i> +94 76 368 8721</p>
+            <!-- Sachindu Premasiri -->
+            <div class="swiper-slide">
+              <a href="https://people.ce.pdn.ac.lk/students/e20/305/" target="_blank" class="testimonial-item text-decoration-none">
+                <div class="profile mt-auto text-center">
+                  <img src="assets/img/testimonials/testimonials-2.jpg" class="testimonial-img" alt="Sachindu Premasiri">
+                  <h3>Sachindu Premasiri</h3>
+                  <p class="text-primary mb-1"><i class="bi bi-envelope"></i> e20305@eng.pdn.ac.lk</p>
+                  <p class="text-secondary"><i class="bi bi-telephone"></i> +94 76 368 8721</p>
+                </div>
+              </a>
             </div>
-          </a>
-        </div>
-        <!-- End testimonial item -->
+            <!-- End testimonial item -->
 
-        <!-- Nimesha Somathilaka -->
-        <div class="swiper-slide">
-          <a href="https://people.ce.pdn.ac.lk/students/e20/381/" target="_blank" class="testimonial-item text-decoration-none">
-            <div class="profile mt-auto text-center">
-              <img src="assets/img/testimonials/testimonials-3.jpg" class="testimonial-img" alt="Nimesha Somathilaka">
-              <h3>Nimesha Somathilaka</h3>
-              <p class="text-primary mb-1"><i class="bi bi-envelope"></i> e20381@eng.pdn.ac.lk</p>
-              <p class="text-secondary"><i class="bi bi-telephone"></i> +94 71  785 2409</p>
+            <!-- Nimesha Somathilaka -->
+            <div class="swiper-slide">
+              <a href="https://people.ce.pdn.ac.lk/students/e20/381/" target="_blank" class="testimonial-item text-decoration-none">
+                <div class="profile mt-auto text-center">
+                  <img src="assets/img/testimonials/testimonials-3.jpg" class="testimonial-img" alt="Nimesha Somathilaka">
+                  <h3>Nimesha Somathilaka</h3>
+                  <p class="text-primary mb-1"><i class="bi bi-envelope"></i> e20381@eng.pdn.ac.lk</p>
+                  <p class="text-secondary"><i class="bi bi-telephone"></i> +94 71  785 2409</p>
+                </div>
+              </a>
             </div>
-          </a>
-        </div>
-        <!-- End testimonial item -->
+            <!-- End testimonial item -->
 
-        <!-- Devin Hasnaka -->
-        <div class="swiper-slide">
-          <a href="https://people.ce.pdn.ac.lk/students/e20/385/" target="_blank" class="testimonial-item text-decoration-none">
-            <div class="profile mt-auto text-center">
-              <img src="assets/img/testimonials/testimonials-4.jpg" class="testimonial-img" alt="Devin Hasnaka">
-              <h3>Devin Hasnaka</h3>
-              <p class="text-primary mb-1"><i class="bi bi-envelope"></i> e20385@eng.pdn.ac.lk</p>
-              <p class="text-secondary"><i class="bi bi-telephone"></i> +94 71 915 4938</p>
+            <!-- Devin Hasnaka -->
+            <div class="swiper-slide">
+              <a href="https://people.ce.pdn.ac.lk/students/e20/385/" target="_blank" class="testimonial-item text-decoration-none">
+                <div class="profile mt-auto text-center">
+                  <img src="assets/img/testimonials/testimonials-4.jpg" class="testimonial-img" alt="Devin Hasnaka">
+                  <h3>Devin Hasnaka</h3>
+                  <p class="text-primary mb-1"><i class="bi bi-envelope"></i> e20385@eng.pdn.ac.lk</p>
+                  <p class="text-secondary"><i class="bi bi-telephone"></i> +94 71 915 4938</p>
+                </div>
+              </a>
             </div>
-          </a>
+            <!-- End testimonial item -->
+          </div>
+          
+          <div class="swiper-pagination"></div>
         </div>
-        <!-- End testimonial item -->
       </div>
-      
-      <div class="swiper-pagination"></div>
-    </div>
-  </div>
+    </section><!-- /Testimonials Section -->
 
-</section><!-- /Testimonials Section -->
-
-
-    
-
-  <!-- Budget Section -->
-<section id="budget" class="section">
-  <div class="container" data-aos="fade-up">
-    
-    <div class="container section-title" data-aos="fade-up">
-        <h2>Detailed Budget</h2>
-    </div>
-    
-    <div class="table-responsive mt-4">
-      <table class="table table-bordered table-striped budget-table">
-        <thead class="table-green">
-          <tr>
-            <th>Item</th>
-            <th>Quantity</th>
-            <th>Unit Cost (LKR)</th>
-            <th>Total (LKR)</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><td>ESP32</td><td>4</td><td>1,500</td><td>6,000</td></tr>
-          <tr><td>PH Sensor: pH4502C</td><td>1</td><td>6,000</td><td>6,000</td></tr>
-          <tr><td>DHT22 Sensor</td><td>1</td><td>400</td><td>400</td></tr>
-          <tr><td>Turbidity Sensor: MD0591</td><td>1</td><td>2,500</td><td>2,500</td></tr>
-          <tr><td>Water Level Sensor: PSR-22-B2</td><td>1</td><td>750</td><td>750</td></tr>
-          <tr><td>Light Sensor: GY-30</td><td>1</td><td>350</td><td>350</td></tr>
-          <tr><td>Water Pumps</td><td>3</td><td>1,600</td><td>4,800</td></tr>
-          <tr><td>3D Printing Components</td><td>-</td><td>-</td><td>16,000</td></tr>
-          <tr><td>Mounting Structures</td><td>4</td><td>500</td><td>2,000</td></tr>
-          <tr><td>Cabling & Connectors</td><td>-</td><td>1,000</td><td>1,000</td></tr>
-          <tr><td>LiPo Batteries 2200mAh</td><td>2</td><td>1,000</td><td>2,000</td></tr>
-          <tr><td>Database/Cloud (1 month)</td><td>-</td><td>30/GB</td><td>3,000</td></tr>
-          <tr><td>Power Supply & Regulators</td><td>4</td><td>800</td><td>3,200</td></tr>
-          <tr><td>Control Valves & Actuators</td><td>6</td><td>1,200</td><td>7,200</td></tr>
-          <tr><td>Fertilizer Dispensing System</td><td>1</td><td>5,000</td><td>5,000</td></tr>
-          <tr><td>Water Reservoirs & Containers</td><td>3</td><td>2,000</td><td>6,000</td></tr>
-          <tr><td>Additional Electronic Components</td><td>-</td><td>-</td><td>4,000</td></tr>
-          <tr><td>Tubing & Fittings</td><td>-</td><td>-</td><td>2,500</td></tr>
-          <tr><td>Enclosures & Protective Covers</td><td>5</td><td>600</td><td>3,000</td></tr>
-          <tr><td>Testing & Calibration Equipment</td><td>-</td><td>-</td><td>1,500</td></tr>
-        </tbody>
-        <tfoot class="table-total">
-          <tr>
-            <th colspan="3" class="text-end">Total Project Cost:</th>
-            <th class="total-amount">LKR 76,000</th>
-          </tr>
-        </tfoot>
-      </table>
-    </div>
-  </div>
-</section>
-
-
-
-
-
-  <!-- Contact Section -->
-<section id="contact" class="contact section">
-
-  <!-- Section Title -->
-  <div class="container section-title text-center" data-aos="fade-up">
-    <h2>Contact Us</h2>
-    <p>We are here to assist you. Reach out to us through the following contact methods, and we'll be happy to help you with any questions or inquiries.</p>
-  </div><!-- End Section Title -->
-
-  <div class="container" data-aos="fade-up" data-aos-delay="100">
-
-    <div class="row gy-4 justify-content-center">
-      <div class="col-lg-3 col-md-6">
-        <div class="info-item d-flex flex-column justify-content-center align-items-center" data-aos="fade-up" data-aos-delay="300">
-          <i class="bi bi-telephone"></i>
-          <h3>Call Us</h3>
-          <p>+94 81 222 3232</p>
+    <!-- Budget Section -->
+    <section id="budget" class="section">
+      <div class="container" data-aos="fade-up">
+        
+        <div class="container section-title" data-aos="fade-up">
+            <h2>Detailed Budget</h2>
         </div>
-      </div><!-- End Info Item -->
-
-      <div class="col-lg-3 col-md-6">
-        <div class="info-item d-flex flex-column justify-content-center align-items-center" data-aos="fade-up" data-aos-delay="400">
-          <i class="bi bi-envelope"></i>
-          <h3>Email Us</h3>
-          <p>plantpulse@gmail.com</p>
+        
+        <div class="table-responsive mt-4">
+          <table class="table table-bordered table-striped budget-table">
+            <thead class="table-green">
+              <tr>
+                <th>Item</th>
+                <th>Quantity</th>
+                <th>Unit Cost (LKR)</th>
+                <th>Total (LKR)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>ESP32</td><td>4</td><td>1,500</td><td>6,000</td></tr>
+              <tr><td>PH Sensor: pH4502C</td><td>1</td><td>6,000</td><td>6,000</td></tr>
+              <tr><td>DHT22 Sensor</td><td>1</td><td>400</td><td>400</td></tr>
+              <tr><td>Turbidity Sensor: MD0591</td><td>1</td><td>2,500</td><td>2,500</td></tr>
+              <tr><td>Water Level Sensor: PSR-22-B2</td><td>1</td><td>750</td><td>750</td></tr>
+              <tr><td>Light Sensor: GY-30</td><td>1</td><td>350</td><td>350</td></tr>
+              <tr><td>Water Pumps</td><td>3</td><td>1,600</td><td>4,800</td></tr>
+              <tr><td>3D Printing Components</td><td>-</td><td>-</td><td>16,000</td></tr>
+              <tr><td>Mounting Structures</td><td>4</td><td>500</td><td>2,000</td></tr>
+              <tr><td>Cabling & Connectors</td><td>-</td><td>1,000</td><td>1,000</td></tr>
+              <tr><td>LiPo Batteries 2200mAh</td><td>2</td><td>1,000</td><td>2,000</td></tr>
+              <tr><td>Database/Cloud (1 month)</td><td>-</td><td>30/GB</td><td>3,000</td></tr>
+              <tr><td>Power Supply & Regulators</td><td>4</td><td>800</td><td>3,200</td></tr>
+              <tr><td>Control Valves & Actuators</td><td>6</td><td>1,200</td><td>7,200</td></tr>
+              <tr><td>Fertilizer Dispensing System</td><td>1</td><td>5,000</td><td>5,000</td></tr>
+              <tr><td>Water Reservoirs & Containers</td><td>3</td><td>2,000</td><td>6,000</td></tr>
+              <tr><td>Additional Electronic Components</td><td>-</td><td>-</td><td>4,000</td></tr>
+              <tr><td>Tubing & Fittings</td><td>-</td><td>-</td><td>2,500</td></tr>
+              <tr><td>Enclosures & Protective Covers</td><td>5</td><td>600</td><td>3,000</td></tr>
+              <tr><td>Testing & Calibration Equipment</td><td>-</td><td>-</td><td>1,500</td></tr>
+            </tbody>
+            <tfoot class="table-total">
+              <tr>
+                <th colspan="3" class="text-end">Total Project Cost:</th>
+                <th class="total-amount">LKR 76,000</th>
+              </tr>
+            </tfoot>
+          </table>
         </div>
-      </div><!-- End Info Item -->
+      </div>
+    </section>
 
-    </div>
-  </div>
+    <!-- Contact Section -->
+    <section id="contact" class="contact section">
+      <!-- Section Title -->
+      <div class="container section-title text-center" data-aos="fade-up">
+        <h2>Contact Us</h2>
+        <p>We are here to assist you. Reach out to us through the following contact methods, and we'll be happy to help you with any questions or inquiries.</p>
+      </div><!-- End Section Title -->
 
-</section><!-- /Contact Section -->
+      <div class="container" data-aos="fade-up" data-aos-delay="100">
+        <div class="row gy-4 justify-content-center">
+          <div class="col-lg-3 col-md-6">
+            <div class="info-item d-flex flex-column justify-content-center align-items-center" data-aos="fade-up" data-aos-delay="300">
+              <i class="bi bi-telephone"></i>
+              <h3>Call Us</h3>
+              <p>+94 81 222 3232</p>
+            </div>
+          </div><!-- End Info Item -->
 
+          <div class="col-lg-3 col-md-6">
+            <div class="info-item d-flex flex-column justify-content-center align-items-center" data-aos="fade-up" data-aos-delay="400">
+              <i class="bi bi-envelope"></i>
+              <h3>Email Us</h3>
+              <p>plantpulse@gmail.com</p>
+            </div>
+          </div><!-- End Info Item -->
+        </div>
+      </div>
+    </section><!-- /Contact Section -->
 
   </main>
 
   <footer id="footer" class="footer position-relative light-background">
-
     <div class="container footer-top">
       <div class="row gy-4">
         <div class="col-lg-4 col-md-6 footer-about">
@@ -694,12 +962,8 @@
             <li><a href="#">Automation</a></li>
             <li><a href="#">Real Time Data</a></li>
             <li><a href="#">Soilless farming systems</a></li>
-            
           </ul>
         </div>
-
-        
-
       </div>
     </div>
 
@@ -713,7 +977,6 @@
         
       </div>
     </div>
-
   </footer>
 
   <!-- Scroll Top -->
