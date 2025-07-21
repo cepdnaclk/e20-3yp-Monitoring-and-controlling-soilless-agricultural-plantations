@@ -59,7 +59,6 @@ With live updates and full control accessible through our mobile application, ur
 
 #### Embedded Development
 
-- **Arduino IDE**: Development environment for ESP32 firmware programming
 - **C/C++**: Programming language for microcontroller logic
 - **ESP32 Libraries**: WiFi, HTTP client, and sensor interface libraries
 
@@ -86,7 +85,7 @@ With live updates and full control accessible through our mobile application, ur
 - **Git**: Version control system
 - **npm/yarn**: Package management
 - **Visual Studio Code**: Code editor
-- **Android Studio**: Android development and testing
+- **Expo Go**: Android development and testing
 - **Xcode**: iOS development and testing (for iOS builds)
 
 
@@ -96,9 +95,120 @@ With live updates and full control accessible through our mobile application, ur
 
 - Node.js (v14 or higher)
 - Arduino IDE (v1.8 or higher)
-- Android Studio (for Android development)
+- Expo Go (for Android development)
 - Git
 - Firebase account
+
+### 1. Mobile App Setup
+
+#### Clone the Repository
+
+```bash
+git clone https://github.com/cepdnaclk/e20-3yp-Monitoring-and-controlling-soilless-agricultural-plantations.git
+cd e20-3yp-Monitoring-and-controlling-soilless-agricultural-plantations
+```
+
+
+#### Install Dependencies
+
+```bash
+cd mobile-app
+npm install
+# or
+yarn install
+```
+
+
+#### Configure Environment
+
+1. Create `.env` file in the mobile app root directory
+2. Add Firebase configuration:
+```env
+FIREBASE_API_KEY=your_api_key
+FIREBASE_AUTH_DOMAIN=your_auth_domain
+FIREBASE_DATABASE_URL=your_database_url
+FIREBASE_PROJECT_ID=your_project_id
+FIREBASE_STORAGE_BUCKET=your_storage_bucket
+FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+FIREBASE_APP_ID=your_app_id
+```
+
+
+#### Run the App
+
+```bash
+# For Android
+npx react-native run-android
+
+# For iOS (macOS only)
+npx react-native run-ios
+```
+
+
+### 2. ESP32 Firmware Setup
+
+#### Install Required Libraries
+
+Open Arduino IDE and install the following libraries via Library Manager:
+
+- ESP32 Board Package
+- Firebase ESP32 Client
+- DHT sensor library
+- WiFi library
+- ArduinoJson
+
+
+#### Configure WiFi and Firebase
+
+1. Open `esp32-firmware/main/main.ino`
+2. Update WiFi credentials:
+```cpp
+const char* ssid = "your_wifi_ssid";
+const char* password = "your_wifi_password";
+```
+
+3. Update Firebase configuration:
+```cpp
+#define FIREBASE_HOST "your-project-default-rtdb.firebaseio.com"
+#define FIREBASE_AUTH "your_database_secret"
+```
+
+
+#### Flash the Firmware
+
+1. Connect ESP32 to your computer via USB
+2. Select the correct board and port in Arduino IDE
+3. Upload the firmware to ESP32
+
+### 3. Firebase Setup
+
+#### Create Firebase Project
+
+1. Go to [Firebase Console](https://console.firebase.google.com)
+2. Create a new project
+3. Enable Authentication (Email/Password method)
+4. Set up Realtime Database with the following structure:
+```json
+{
+  "sensors": {
+    "device_id": {
+      "temperature": 0,
+      "humidity": 0,
+      "ph": 0,
+      "turbidity": 0,
+      "water_level": 0,
+      "light_intensity": 0,
+      "timestamp": 0
+    }
+  },
+  "controls": {
+    "device_id": {
+      "pump_status": false,
+      "fertilizer_dispenser": false
+    }
+  }
+}
+```
 
 
 ## Detailed budget
