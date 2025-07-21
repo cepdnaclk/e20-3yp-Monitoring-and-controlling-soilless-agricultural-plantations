@@ -34,6 +34,72 @@ With live updates and full control accessible through our mobile application, ur
 
 ![Data path](docs/images/data_path.jpeg)
 
+## Technologies Used
+
+### Hardware Components
+
+#### Microcontrollers \& Sensors
+
+- **ESP32**: Primary microcontroller for data collection and wireless communication
+- **pH Sensor (pH4502C)**: Monitors acidity/alkalinity levels of the hydroponic solution
+- **Temperature \& Humidity Sensor (DHT22)**: Tracks atmospheric conditions
+- **Turbidity Sensor (MD0591)**: Measures water clarity and nutrient concentration
+- **Water Level Sensor (PSR-22-B2 V12767)**: Monitors fluid levels in the system
+- **Light Intensity Sensor (GY-30)**: Measures ambient light conditions
+
+
+#### Actuators \& Controls
+
+- **Automated Fertilizer Dispenser**: Controlled nutrient delivery system
+- **Fluid Circulation Motor**: Maintains proper water circulation
+- **LiPo 2200mAh Batteries**: Portable power supply for remote operation
+
+
+### Software Stack
+
+#### Embedded Development
+
+- **Arduino IDE**: Development environment for ESP32 firmware programming
+- **C/C++**: Programming language for microcontroller logic
+- **ESP32 Libraries**: WiFi, HTTP client, and sensor interface libraries
+
+
+#### Backend \& Database
+
+- **Firebase Realtime Database**: Cloud-based data storage and synchronization
+- **Firebase Authentication**: User management and security
+- **Firebase Cloud Functions**: Server-side logic and data processing
+- **RESTful APIs**: Data communication protocols
+
+
+#### Mobile Application
+
+- **React Native**: Cross-platform mobile app development framework
+- **JavaScript/TypeScript**: Primary development language
+- **Firebase SDK**: Integration with backend services
+- **React Navigation**: App navigation and routing
+- **Native Device APIs**: Access to device sensors and notifications
+
+
+#### Development Tools
+
+- **Git**: Version control system
+- **npm/yarn**: Package management
+- **Visual Studio Code**: Code editor
+- **Android Studio**: Android development and testing
+- **Xcode**: iOS development and testing (for iOS builds)
+
+
+## Installation \& Setup Instructions
+
+### Prerequisites
+
+- Node.js (v14 or higher)
+- Arduino IDE (v1.8 or higher)
+- Android Studio (for Android development)
+- Git
+- Firebase account
+
 
 ## Detailed budget
 
